@@ -5,11 +5,15 @@ NB sentiment analyser.
 Start code.
 """
 import argparse
+import pandas as pd
+import re
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
 
 """
 IMPORTANT, modify this part with your details
 """
-USER_ID = "acpXXjd" #your unique student ID, i.e. the IDs starting with "acp", "mm" etc that you use to login into MUSE 
+USER_ID = "aca19aio"
 
 def parse_args():
     parser=argparse.ArgumentParser(description="A Naive Bayes Sentiment Analyser for the Rotten Tomatoes Movie Reviews dataset")
@@ -45,12 +49,41 @@ def main():
     
     #whether to print confusion matrix (default = no confusion matrix)
     confusion_matrix = inputs.confusion_matrix
+
+    # read tsv file
+    df = pd.read_csv(training, delimiter = "\t")
+
     
-    """
-    ADD YOUR CODE HERE
-    Create functions and classes, using the best practices of Software Engineering
-    """
+    for sentence in df["Phrase"]:
+        # lowercase all phrases, replace 's with is 
+        lc_repl_sentence = sentence.lower().replace("'s", "is")
+        # remove punctuation
+        rm_punc_sentence = re.sub(r'[^\w\s]','',lc_repl_sentence)
+        # tokenize sentences
+        sentence_tokens = word_tokenize(rm_punc_sentence)
+
+        # remove stopwords TODO: do I want the stopwords to calculate sentiment value of sentence? 
+        # Reference: https://stackabuse.com/removing-stop-words-from-strings-in-python/
+        # tokens_wo_sw = [word for word in sentence_tokens if not word in stopwords.words()]
+
+        # debug
+        # df['Phrase'] = df['Phrase'].replace(sentence, back_to_sentence)
+        print(sentence_tokens)
+  
+        
+
+   
+
+    # remove stop words 
+        
+    print(df)
+
+   
+
     
+    # TODO: placeholder
+    number_classes = 0
+    features = 0
     #You need to change this in order to return your macro-F1 score for the dev set
     f1_score = 0
     
