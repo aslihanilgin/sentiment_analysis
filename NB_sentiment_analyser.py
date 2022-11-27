@@ -70,7 +70,7 @@ def create_bag_of_words_wo_stopwords(df):
 
             # get sentiment value of word
             sent_value = df[df['Phrase']==sentence]['Sentiment'].values[0]
-
+            # Reference: https://thispointer.com/python-dictionary-with-multiple-values-per-key/
             if token not in all_words_and_counts.keys():
                 all_words_and_counts[token] = list()
                 all_words_and_counts[token] = [0] * 5 # initialise list with values 0
