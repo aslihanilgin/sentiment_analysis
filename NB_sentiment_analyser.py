@@ -11,6 +11,8 @@ import re
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 
+from f1_score_computation import f1_score_computation
+
 """
 IMPORTANT, modify this part with your details
 """
@@ -199,8 +201,8 @@ def main():
     #number of classes
     number_classes = inputs.classes
     if not (number_classes == 3 or number_classes == 5):
-        print("Number of classes specified is not applicable. Defaulting to 3.")
-        number_classes = 3
+        print("Number of classes specified is not applicable. Defaulting to 5.")
+        number_classes = 5
     
     #accepted values "features" to use your features or "all_words" to use all words (default = all_words)
     features = inputs.features
@@ -212,8 +214,9 @@ def main():
     #whether to print confusion matrix (default = no confusion matrix)
     confusion_matrix = inputs.confusion_matrix
 
-    # read tsv file
+    # read training tsv file
     df = pd.read_csv(training, delimiter = "\t")
+    dev_df = pd.read_csv(dev, delimiter = "\t")
 
     # preprocess dataframe
     pre_process_sentences(df)
@@ -279,19 +282,18 @@ def main():
 
     ######
 
-
-
+    
+    f1_score_list = f1_score_computation(df, dev_df, number_classes)
     # debug
-    print(pred_sentiment_value_dict)
-
-   
+    print(f1_score_list)
+    
 
     
     # TODO: placeholder
     number_classes = 0
     features = 0
     #You need to change this in order to return your macro-F1 score for the dev set
-    f1_score = 0
+    f1_score_placeholder = 0
     
 
     """
@@ -299,7 +301,7 @@ def main():
     However, make sure you are also implementing a function to save the class predictions on dev and test sets as specified in the assignment handout
     """
     #print("Student\tNumber of classes\tFeatures\tmacro-F1(dev)\tAccuracy(dev)")
-    print("%s\t%d\t%s\t%f" % (USER_ID, number_classes, features, f1_score))
+    print("%s\t%d\t%s\t%f" % (USER_ID, number_classes, features, f1_score_placeholder))
 
 if __name__ == "__main__":
     main()
