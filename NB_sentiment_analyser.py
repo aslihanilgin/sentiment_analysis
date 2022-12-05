@@ -47,8 +47,7 @@ def pre_process_sentences(df):
     print("Just preprocessed sentences.")
     # debug
     print(df)
-
-# TODO: I DON'T THINK I NEED THE COUNTS HERE 
+ 
 def create_bag_of_words(df):
 
     print("Going through each sentence now.")
@@ -98,11 +97,6 @@ def compute_total_sent_counts(df, number_classes):
 
     count_list = [total_neg_word_count, total_sw_neg_word_count, total_neu_word_count, total_sw_pos_word_count, total_pos_word_count]
     return count_list
-
-# def map_5_val_to_3_val_scale(neg, sw_neg, neu, sw_pos, pos):
-#     negative = neg + sw_neg
-#     positive = pos + sw_pos
-#     return (negative, neu, positive)
 
 def compute_prior_probability(total_sentence_no, count_list, number_classes):
 
@@ -261,11 +255,6 @@ def main():
     ######
 
     # 1. Compute prior probability of each class
-    # TODO: this will be different if selected class is 3
-
-    # prior_prob_neg, prior_prob_sw_neg, prior_prob_neu, prior_prob_sw_pos, prior_prob_pos = compute_prior_probability(
-    #             total_sentence_no, neg_count, sw_neg_count, neu_count, sw_pos_count, pos_count)
-    
  
     # compute count for every class
     sent_count_list = compute_total_sent_counts(df, number_classes)
