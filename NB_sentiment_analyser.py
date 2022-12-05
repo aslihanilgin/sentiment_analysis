@@ -30,32 +30,26 @@ def parse_args():
     args=parser.parse_args()
     return args
 
-def count_sentiment_vals(df):
+# Preprocesses sentences within the df by:
+# - lowercasing
+# - replacing "'s" with "is"
+def pre_process_sentences(df):
 
-    total_sentence_no = len(df)
+    for sentence in df["Phrase"]:
+        # lowercase all phrases, replace 's with is 
+        lower_sentences = sentence.lower()
+        lc_repl_sentence = lower_sentences.replace("'s", "is")
+        # remove punctuation
+        rm_punc_sentence = re.sub(r'[^\w\s]','',lc_repl_sentence)
 
-    total_neg_count = 0
-    total_sw_neg_count = 0
-    total_neu_count = 0
-    total_sw_pos_count = 0
-    total_pos_count = 0
-
-    for sent_val in df["Sentiment"]:
-        if sent_val == 0:
-            neg_count += 1
-        if sent_val == 1:
-            sw_neg_count += 1
-        if sent_val == 2:
-            neu_count += 1
-        if sent_val == 3:
-            sw_pos_count += 1
-        if sent_val == 4:
-            pos_count += 1
-
-    return total_sentence_no, total_neg_count, total_sw_neg_count, total_neu_count, total_sw_pos_count, total_pos_count
+        df['Phrase'] = df['Phrase'].replace([sentence], rm_punc_sentence)
+    
+    print("Just preprocessed sentences.")
+    # debug
+    print(df)
 
 # TODO: might be able to do this faster with pd len of each column count
-def create_bag_of_words_wo_stopwords(df):
+def create_bag_of_words(df):
 
     print("Going through each sentence now.")
 
@@ -92,29 +86,30 @@ def create_bag_of_words_wo_stopwords(df):
              
     return all_words_and_counts
 
+def count_sentiment_vals(df):
 
-    print("Tokenized sentences.")
-    print("Removed stopwords.")
-    print("Created a bag of words dict.")
-    # debug
-    # import pdb; pdb.set_trace()
+    total_sentence_no = len(df)
 
+    total_neg_count = 0
+    total_sw_neg_count = 0
+    total_neu_count = 0
+    total_sw_pos_count = 0
+    total_pos_count = 0
 
+    for sent_val in df["Sentiment"]:
+        if sent_val == 0:
+            neg_count += 1
+        if sent_val == 1:
+            sw_neg_count += 1
+        if sent_val == 2:
+            neu_count += 1
+        if sent_val == 3:
+            sw_pos_count += 1
+        if sent_val == 4:
+            pos_count += 1
 
+    return total_sentence_no, total_neg_count, total_sw_neg_count, total_neu_count, total_sw_pos_count, total_pos_count
 
-def pre_process_sentences(df):
-
-    for sentence in df["Phrase"]:
-        # lowercase all phrases, replace 's with is 
-        lower_sentences = sentence.lower()
-        lc_repl_sentence = lower_sentences.replace("'s", "is")
-        # remove punctuation
-        rm_punc_sentence = re.sub(r'[^\w\s]','',lc_repl_sentence)
-
-        df['Phrase'] = df['Phrase'].replace([sentence], rm_punc_sentence)
-    
-    print("Just preprocessed sentences.")
-    print(df)
 
 def map_5_val_to_3_val_scale(neg, sw_neg, neu, sw_pos, pos):
     negative = neg + sw_neg
@@ -224,7 +219,7 @@ def main():
     # preprocess dataframe
     pre_process_sentences(df)
   
-    all_words_and_counts_dict = create_bag_of_words_wo_stopwords(df)
+    all_words_and_counts_dict = create_bag_of_words(df)
 
 
     ######
