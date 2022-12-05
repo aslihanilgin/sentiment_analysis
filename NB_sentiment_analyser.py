@@ -6,12 +6,10 @@ Start code.
 """
 import argparse
 import pandas as pd
-import numpy as np
-import re
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-
+from classifier import classifier
 from f1_score_computation import f1_score_computation
+
+from nltk.tokenize import word_tokenize
 
 """
 IMPORTANT, modify this part with your details
@@ -30,165 +28,84 @@ def parse_args():
     args=parser.parse_args()
     return args
 
-def count_sentiment_vals(df):
+def start_classification(classification, train_df, number_classes):
 
-    total_sentence_no = len(df)
+    # preprocess dataframe
+    train_df = classification.pre_process_sentences(train_df)
 
-    total_neg_count = 0
-    total_sw_neg_count = 0
-    total_neu_count = 0
-    total_sw_pos_count = 0
-    total_pos_count = 0
+    # 1. Compute prior probability of each class
+ 
+    # compute count for every sentiment class
+    sent_count_list = classification.compute_total_sent_counts(train_df, number_classes)
+    
+    total_sentence_no = len(train_df) # compute total number of sentences
 
-    for sent_val in df["Sentiment"]:
-        if sent_val == 0:
-            neg_count += 1
-        if sent_val == 1:
-            sw_neg_count += 1
-        if sent_val == 2:
-            neu_count += 1
-        if sent_val == 3:
-            sw_pos_count += 1
-        if sent_val == 4:
-            pos_count += 1
+    # compute prior probabilities according to class number
+    if number_classes == 5:
+        prior_prob_neg, prior_prob_sw_neg, prior_prob_neu, prior_prob_sw_pos, prior_prob_pos = classification.compute_prior_probability(total_sentence_no, sent_count_list, number_classes)
+        class_prior_prob_list = [prior_prob_neg, prior_prob_sw_neg, prior_prob_neu, prior_prob_sw_pos, prior_prob_pos]
+    elif number_classes == 3:
+        prior_prob_neg, prior_prob_neu, prior_prob_pos = classification.compute_prior_probability(total_sentence_no, sent_count_list, number_classes)
+        class_prior_prob_list = [prior_prob_neg, prior_prob_neu, prior_prob_pos]
 
-    return total_sentence_no, total_neg_count, total_sw_neg_count, total_neu_count, total_sw_pos_count, total_pos_count
+    # 2. For each class:
+    #   ▶ Compute likelihood of each feature
+        # TODO: this will be for specific tokens for selected tokens
 
-# TODO: might be able to do this faster with pd len of each column count
-def create_bag_of_words_wo_stopwords(df):
+    likelihood_for_features_dict = dict()
+    # create a bag of words with their counts
+    all_words_and_counts_dict = classification.create_bag_of_words(train_df)
 
-    print("Going through each sentence now.")
+    print("Computing likelihoods for features.")
+    for token in all_words_and_counts_dict.keys():
 
-    # Create a bag of words 
-    global all_words_and_counts
-    all_words_and_counts = dict()
+        lh_list = classification.compute_likelihood_for_feature(token, sent_count_list, all_words_and_counts_dict, number_classes)
+        likelihood_for_features_dict[token] = lh_list
+    
+    return class_prior_prob_list, likelihood_for_features_dict 
 
-    for sentence in df["Phrase"]:
+    # training done
+    
+    
+def evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes):
 
+    print("Evaluating dev file.")
+
+    # preprocess dataframe
+    dev_df = classification.pre_process_sentences(dev_df)
+
+    pred_sentiment_value_dict = dict()
+
+    # Calculate posterior probability for every sentence in dev file
+    for sentence in dev_df["Phrase"]:
         # Reference: https://stackabuse.com/python-for-nlp-creating-bag-of-words-model-from-scratch/
         # tokenize sentences
         sentence_tokens = word_tokenize(sentence)
         sentence_tokens = sentence.split()
 
-        # remove stop words
-        # Reference: https://stackoverflow.com/questions/5486337/how-to-remove-stop-words-using-nltk-or-python
-        # tokens_wo_sw = [word for word in sentence_tokens if word not in stopwords.words('english')]
-
-        # for token in tokens_wo_sw:
+        # Reference: https://www.programiz.com/python-programming/methods/dictionary/fromkeys
+        sentence_lh_dict = { key : list() for key in range(number_classes)}
+        # get likelihood list of every word in every sentence of dev data
         for token in sentence_tokens:
+            if token in likelihood_for_features_dict:
+                for class_no in range(number_classes):
+                    sentence_lh_dict[class_no].append(likelihood_for_features_dict[token][class_no]) 
+            else: # token not in training bag of words
+                continue
+        # get sentiment having maximum posterior probability
+        highest_prob_index = classification.compute_posterior_probability(sentence_lh_dict, class_prior_prob_list, number_classes)
 
-            # get sentiment value of word
-            sent_value = df[df['Phrase']==sentence]['Sentiment'].values[0] 
-            # Reference: https://thispointer.com/python-dictionary-with-multiple-values-per-key/
-            if token not in all_words_and_counts.keys():
-                all_words_and_counts[token] = list()
-                # list --> [neg, sw_neg, neu, sw_pos, pos]
-                all_words_and_counts[token] = [0] * 5 # initialise list with values 0 
-                all_words_and_counts[token][sent_value] = 1
-            else:
-                # increment the count value
-                all_words_and_counts[token][sent_value] += 1
-                
-             
-    return all_words_and_counts
+        # add the sentence id and the calculated sent value to sentiment_value_dict
+        sentence_id = dev_df.loc[dev_df['Phrase'] == sentence, 'SentenceId'].item() # TODO: CHECK IF df IS GENERALISED
+        
+        pred_sentiment_value_dict[sentence_id] = highest_prob_index
 
+    result = f1_score_computation(pred_sentiment_value_dict, dev_df, number_classes) # compare pred dev vs actual dev
+    dev_macro_f1_score = result.compute_macro_f1_score()
 
-    print("Tokenized sentences.")
-    print("Removed stopwords.")
-    print("Created a bag of words dict.")
-    # debug
-    # import pdb; pdb.set_trace()
+    print("Evaluation finished.")
 
-
-
-
-def pre_process_sentences(df):
-
-    for sentence in df["Phrase"]:
-        # lowercase all phrases, replace 's with is 
-        lower_sentences = sentence.lower()
-        lc_repl_sentence = lower_sentences.replace("'s", "is")
-        # remove punctuation
-        rm_punc_sentence = re.sub(r'[^\w\s]','',lc_repl_sentence)
-
-        df['Phrase'] = df['Phrase'].replace([sentence], rm_punc_sentence)
-    
-    print("Just preprocessed sentences.")
-    print(df)
-
-def map_5_val_to_3_val_scale(neg, sw_neg, neu, sw_pos, pos):
-    negative = neg + sw_neg
-    positive = pos + sw_pos
-    return (negative, neu, positive)
-
-def compute_prior_probability(total_sentence_no, neg_count, sw_neg_count, neu_count, sw_pos_count, pos_count):
-
-    prior_prob_neg = neg_count / total_sentence_no
-    prior_prob_sw_neg = sw_neg_count / total_sentence_no
-    prior_prob_neu = neu_count / total_sentence_no
-    prior_prob_sw_pos = sw_pos_count / total_sentence_no
-    prior_prob_pos = pos_count / total_sentence_no
-
-    return prior_prob_neg, prior_prob_sw_neg, prior_prob_neu, prior_prob_sw_pos, prior_prob_pos
-
-def compute_total_sent_counts(df):
-    # get count of sentiments
-
-    # TODO: pandas.DataFramde.count might be a better idea
-    # Reference: https://sparkbyexamples.com/pandas/pandas-extract-column-value-based-on-another-column/#:~:text=You%20can%20extract%20a%20column,column%20value%20matches%20with%2025000.
-    total_neg_word_count = len(df.query('Sentiment == 0')['Phrase'])
-    total_sw_neg_word_count = len(df.query('Sentiment == 1')['Phrase'])
-    total_neu_word_count = len(df.query('Sentiment == 2')['Phrase'])
-    total_sw_pos_word_count = len(df.query('Sentiment == 3')['Phrase'])
-    total_pos_word_count = len(df.query('Sentiment == 4')['Phrase'])
-
-    return total_neg_word_count, total_sw_neg_word_count, total_neu_word_count, total_sw_pos_word_count, total_pos_word_count
-
-# Compute likelihood for 5 sentiment values for a token
-def compute_likelihood_for_feature(token, total_neg_word_count, total_sw_neg_word_count, total_neu_word_count, total_sw_pos_word_count, total_pos_word_count):
-    token_dict_vals = all_words_and_counts[token] # list --> [neg, sw_neg, neu, sw_pos, pos]
-    neg_c = token_dict_vals[0]
-    sw_neg_c = token_dict_vals[1]
-    neu_c = token_dict_vals[2]
-    sw_pos_c = token_dict_vals[3]
-    pos_c = token_dict_vals[4]
-
-    neg_lh = neg_c / total_neg_word_count
-    sw_neg_lh = sw_neg_c / total_sw_neg_word_count
-    neu_lh = neu_c / total_neu_word_count
-    sw_pos_lh = sw_pos_c / total_sw_pos_word_count
-    pos_lh = pos_c / total_pos_word_count
-
-    return neg_lh, sw_neg_lh, neu_lh, sw_pos_lh, pos_lh    
-
-def compute_posterior_probability(sentence_lh_list, class_prior_prob_list):
-
-    # TODO: can refactor it 
-    sentence_neg_lh = sentence_lh_list[0]
-    sentence_sw_neg_lh = sentence_lh_list[1]
-    sentence_neu_lh = sentence_lh_list[2]
-    sentence_sw_pos_lh = sentence_lh_list[3]
-    sentence_pos_lh = sentence_lh_list[4]
-
-    neg_prior_prob = class_prior_prob_list[0]
-    sw_neg_prior_prob = class_prior_prob_list[1]
-    neu_prior_prob = class_prior_prob_list[2]
-    sw_pos_prior_prob = class_prior_prob_list[3]
-    pos_prior_prob = class_prior_prob_list[4]
-
-
-    all_post_probs = list()
-
-    all_post_probs.append(sentence_neg_lh * neg_prior_prob)
-    all_post_probs.append(sentence_sw_neg_lh * sw_neg_prior_prob)
-    all_post_probs.append(sentence_neu_lh * neu_prior_prob)
-    all_post_probs.append(sentence_sw_pos_lh * sw_pos_prior_prob)
-    all_post_probs.append(sentence_pos_lh * pos_prior_prob)
-
-    highest_prob_index = np.argmax(all_post_probs) # returns index of highest probability score
-
-    return highest_prob_index
-
+    return dev_macro_f1_score
 
 def main():
     
@@ -215,90 +132,35 @@ def main():
     #whether to print confusion matrix (default = no confusion matrix)
     confusion_matrix = inputs.confusion_matrix
 
-    # read training tsv file
-    df = pd.read_csv(training, delimiter = "\t")
+    # read tsv files
+    train_df = pd.read_csv(training, delimiter = "\t")
     dev_df = pd.read_csv(dev, delimiter = "\t")
+    test_df = pd.read_csv(test, delimiter = "\t")
 
-    # --------------- TRAINING DATA
+    print("Read all files.")
 
-    # preprocess dataframe
-    pre_process_sentences(df)
-  
-    all_words_and_counts_dict = create_bag_of_words_wo_stopwords(df)
+    # create a classifier object
+    classification = classifier()
+
+    # kickstart classification
+    print("Starting classification.")
+    class_prior_prob_list, likelihood_for_features_dict = start_classification(classification, train_df, number_classes)
+
+    # evaluate dev file
+    dev_macro_f1_score = evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes)
+    print("Dev macro f1 score: {}".format(dev_macro_f1_score))
+
+    # # TODO
+    # # evaluate test file
+    # evaluate_test()
+
+    # use the training data to get all calculations etc and apply it on the dev data
 
 
-    ######
-
-    # 1. Compute prior probability of each class
-    # TODO: this will be different if selected class is 3
-
-    # prior_prob_neg, prior_prob_sw_neg, prior_prob_neu, prior_prob_sw_pos, prior_prob_pos = compute_prior_probability(
-    #             total_sentence_no, neg_count, sw_neg_count, neu_count, sw_pos_count, pos_count)
-    
-    # compute counts for each class
-    total_neg_word_count, total_sw_neg_word_count, total_neu_word_count, total_sw_pos_word_count, total_pos_word_count = compute_total_sent_counts(df)
-    total_sentence_no = len(df)
-
-    prior_prob_neg, prior_prob_sw_neg, prior_prob_neu, prior_prob_sw_pos, prior_prob_pos = compute_prior_probability(total_sentence_no, total_neg_word_count, total_sw_neg_word_count, total_neu_word_count, total_sw_pos_word_count, total_pos_word_count)
-    class_prior_prob_list = [prior_prob_neg, prior_prob_sw_neg, prior_prob_neu, prior_prob_sw_pos, prior_prob_pos]
-
-    # 2. For each class:
-    #   ▶ Compute likelihood of each feature
-        # TODO: this will be for specific tokens for selected tokens
-
-    likelihood_for_features_dict = dict()
-
-    for token in all_words_and_counts_dict.keys():
-
-        neg_lh, sw_neg_lh, neu_lh, sw_pos_lh, pos_lh = compute_likelihood_for_feature(token, total_neg_word_count, total_sw_neg_word_count, total_neu_word_count, total_sw_pos_word_count, total_pos_word_count)
-        lh_list = [neg_lh, sw_neg_lh, neu_lh, sw_pos_lh, pos_lh]
-        likelihood_for_features_dict[token] = lh_list
-
-    # print("Likelihood for features dict: {}".format(likelihood_for_features_dict.keys()))
-
-    pred_sentiment_value_dict = dict()
-
-    # create sentence likelihood and prior prob list
-    for sentence in df["Phrase"]:
-        
-        sentence_lh_list = list()
-
-        word_list = sentence.split()
-
-        for word in word_list:
-            # class prior probability * every word's likelihood --> this is posterior probability
-            sentence_lh_list.append(likelihood_for_features_dict[word][0]) # neg
-            sentence_lh_list.append(likelihood_for_features_dict[word][1]) # sw_neg
-            sentence_lh_list.append(likelihood_for_features_dict[word][2]) # neu
-            sentence_lh_list.append(likelihood_for_features_dict[word][3]) # sw_pos
-            sentence_lh_list.append(likelihood_for_features_dict[word][4]) # pos
-
-        # 3. Calculate the posterior probability by product of previous components
-        highest_prob_index = compute_posterior_probability(sentence_lh_list, class_prior_prob_list)
-    # 4. Select sentiment having maximum posterior probability
-    #   ▶ negative, positive or neutral
-
-        # add the sentence id and the calculated sent value to sentiment_value_dict
-        sentence_id = df.loc[df['Phrase'] == sentence, 'SentenceId'].item()
-        
-        pred_sentiment_value_dict[sentence_id] = highest_prob_index
-
-    ######
-
-    # -----END---------- TRAINING DATA
-
-    result = f1_score_computation(pred_sentiment_value_dict, df, number_classes)
-    macro_f1_score = result.compute_macro_f1_score()
-    # debug
-    print(macro_f1_score)
-    
-
-    
     # TODO: placeholder
-    features = 0
+    macro_f1_score = 0
+    features = "all_words"
     #You need to change this in order to return your macro-F1 score for the dev set
-    f1_score_placeholder = 0
-    
 
     """
     IMPORTANT: your code should return the lines below. 
