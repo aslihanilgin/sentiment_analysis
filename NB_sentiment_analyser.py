@@ -11,6 +11,8 @@ import re
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 
+from f1_score_computation import f1_score_computation
+
 """
 IMPORTANT, modify this part with your details
 """
@@ -52,6 +54,7 @@ def count_sentiment_vals(df):
 
     return total_sentence_no, total_neg_count, total_sw_neg_count, total_neu_count, total_sw_pos_count, total_pos_count
 
+# TODO: might be able to do this faster with pd len of each column count
 def create_bag_of_words_wo_stopwords(df):
 
     print("Going through each sentence now.")
@@ -199,8 +202,8 @@ def main():
     #number of classes
     number_classes = inputs.classes
     if not (number_classes == 3 or number_classes == 5):
-        print("Number of classes specified is not applicable. Defaulting to 3.")
-        number_classes = 3
+        print("Number of classes specified is not applicable. Defaulting to 5.")
+        number_classes = 5
     
     #accepted values "features" to use your features or "all_words" to use all words (default = all_words)
     features = inputs.features
@@ -212,8 +215,11 @@ def main():
     #whether to print confusion matrix (default = no confusion matrix)
     confusion_matrix = inputs.confusion_matrix
 
-    # read tsv file
+    # read training tsv file
     df = pd.read_csv(training, delimiter = "\t")
+    dev_df = pd.read_csv(dev, delimiter = "\t")
+
+    # --------------- TRAINING DATA
 
     # preprocess dataframe
     pre_process_sentences(df)
@@ -279,19 +285,19 @@ def main():
 
     ######
 
+    # -----END---------- TRAINING DATA
 
-
+    result = f1_score_computation(pred_sentiment_value_dict, df, number_classes)
+    macro_f1_score = result.compute_macro_f1_score()
     # debug
-    print(pred_sentiment_value_dict)
-
-   
+    print(macro_f1_score)
+    
 
     
     # TODO: placeholder
-    number_classes = 0
     features = 0
     #You need to change this in order to return your macro-F1 score for the dev set
-    f1_score = 0
+    f1_score_placeholder = 0
     
 
     """
@@ -299,7 +305,7 @@ def main():
     However, make sure you are also implementing a function to save the class predictions on dev and test sets as specified in the assignment handout
     """
     #print("Student\tNumber of classes\tFeatures\tmacro-F1(dev)\tAccuracy(dev)")
-    print("%s\t%d\t%s\t%f" % (USER_ID, number_classes, features, f1_score))
+    print("%s\t%d\t%s\t%f" % (USER_ID, number_classes, features, macro_f1_score))
 
 if __name__ == "__main__":
     main()
