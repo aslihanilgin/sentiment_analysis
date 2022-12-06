@@ -3,13 +3,21 @@ import re
 
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+from feature_selection import feature_selection
+
 
 class classifier:
 
+    def __init__(self, features):
+        self.features = features
+
     # Preprocesses sentences within the df by:
     # - lowercasing
-    # - replacing "'s" with "is"
+    # - removing stop words
     def pre_process_sentences(self, df):
+
+        # debug
+        import pdb; pdb.set_trace()
 
         for sentence in df["Phrase"]:
             # lowercase all phrases
@@ -18,9 +26,20 @@ class classifier:
             # remove punctuation
             rm_punc_sentence = re.sub(r'[^\w\s]','',lower_sentences)
 
-            df['Phrase'] = df['Phrase'].replace([sentence], rm_punc_sentence)
+            # Reference: https://stackabuse.com/python-for-nlp-creating-bag-of-words-model-from-scratch/
+            # tokenize sentences
+            sentence_tokens = word_tokenize(rm_punc_sentence)
+
+            # remove stop words
+            # Reference: https://stackoverflow.com/questions/5486337/how-to-remove-stop-words-using-nltk-or-python
+            sentence_tokens = [word for word in sentence_tokens if word not in stopwords.words('english')]
+            rep_sentence = ' '.join(sentence_tokens)
+
+            df['Phrase'] = df['Phrase'].replace([sentence], rep_sentence)
         
         print("Preprocessed sentences.")
+        # debug
+        print(df)
         return df
     
     def create_bag_of_words(self, df):
@@ -32,14 +51,9 @@ class classifier:
 
         for sentence in df["Phrase"]:
 
-            # Reference: https://stackabuse.com/python-for-nlp-creating-bag-of-words-model-from-scratch/
+            # # Reference: https://stackabuse.com/python-for-nlp-creating-bag-of-words-model-from-scratch/
             # tokenize sentences
             sentence_tokens = word_tokenize(sentence)
-            sentence_tokens = sentence.split()
-
-            # remove stop words
-            # Reference: https://stackoverflow.com/questions/5486337/how-to-remove-stop-words-using-nltk-or-python
-            sentence_tokens = [word for word in sentence_tokens if word not in stopwords.words('english')]
 
             for token in sentence_tokens:
 
@@ -56,7 +70,7 @@ class classifier:
                 else:
                     # increment the count value
                     all_words_and_counts[token][sent_value] += 1
-            
+
         print("Created bag of words.")
                     
         return all_words_and_counts
@@ -64,12 +78,11 @@ class classifier:
     def compute_total_sent_counts(self, df, number_classes):
         # get count of sentiments
 
-        # Reference: https://sparkbyexamples.com/pandas/pandas-extract-column-value-based-on-another-column/#:~:text=You%20can%20extract%20a%20column,column%20value%20matches%20with%2025000.
-        total_neg_word_count = len(df.query('Sentiment == 0')['Phrase'])
-        total_sw_neg_word_count = len(df.query('Sentiment == 1')['Phrase'])
-        total_neu_word_count = len(df.query('Sentiment == 2')['Phrase'])
-        total_sw_pos_word_count = len(df.query('Sentiment == 3')['Phrase'])
-        total_pos_word_count = len(df.query('Sentiment == 4')['Phrase'])
+        total_neg_word_count = len(df.loc[df['Sentiment'] == 0, ['Phrase']])
+        total_sw_neg_word_count =  len(df.loc[df['Sentiment'] == 1, ['Phrase']])
+        total_neu_word_count = len(df.loc[df['Sentiment'] == 2, ['Phrase']])
+        total_sw_pos_word_count = len(df.loc[df['Sentiment'] == 3, ['Phrase']])
+        total_pos_word_count = len(df.loc[df['Sentiment'] == 4, ['Phrase']])
 
         if number_classes == 5:
             count_list = [total_neg_word_count, total_sw_neg_word_count, total_neu_word_count, total_sw_pos_word_count, total_pos_word_count]
@@ -129,7 +142,7 @@ class classifier:
 
             return [neg_lh, neu_lh, pos_lh]
 
-    def compute_posterior_probability(self, sentence_lh_dict, class_prior_prob_list, number_classes):
+    def compute_posterior_probability(self, sentence, sentence_lh_dict, class_prior_prob_list, number_classes):
 
         all_post_probs = list()
 
@@ -147,11 +160,34 @@ class classifier:
             sw_pos_prior_prob = class_prior_prob_list[3]
             pos_prior_prob = class_prior_prob_list[4]
 
-            all_post_probs.append(sentence_neg_lh_prod * neg_prior_prob)
-            all_post_probs.append(sentence_sw_neg_lh_prod * sw_neg_prior_prob)
-            all_post_probs.append(sentence_neu_lh_prod * neu_prior_prob)
-            all_post_probs.append(sentence_sw_pos_lh_prod * sw_pos_prior_prob)
-            all_post_probs.append(sentence_pos_lh_prod * pos_prior_prob)
+            if self.features == 'features': 
+                feature_ops = feature_selection(self.features, number_classes) # create a feature selection object
+
+                # change likelihoods according to adjectives present in sentence
+                # lh_modification_vals = feature_ops.find_adjectives(sentence)
+
+                # add negation sentiment value if there are any
+                add_val_neg = (feature_ops.negation(sentence))
+
+                # add intensifier value if there are any
+                add_val_intens = (feature_ops.intensifier(sentence))
+
+                # sentence_lh_list = [sentence_neg_lh_prod, sentence_sw_neg_lh_prod, sentence_neu_lh_prod, sentence_sw_pos_lh_prod, sentence_pos_lh_prod]
+
+                # modified_lh_list = [sum(val) for val in zip(sentence_lh_list, lh_modification_vals)]  
+
+                all_post_probs.append((sentence_neg_lh_prod * neg_prior_prob)+add_val_neg)
+                all_post_probs.append((sentence_sw_neg_lh_prod * sw_neg_prior_prob)+add_val_neg)
+                all_post_probs.append(sentence_neu_lh_prod * neu_prior_prob)
+                all_post_probs.append((sentence_sw_pos_lh_prod * sw_pos_prior_prob)+add_val_intens)
+                all_post_probs.append(sentence_pos_lh_prod * pos_prior_prob+add_val_intens)
+
+            else:
+                all_post_probs.append(sentence_neg_lh_prod * neg_prior_prob)
+                all_post_probs.append(sentence_sw_neg_lh_prod * sw_neg_prior_prob)
+                all_post_probs.append(sentence_neu_lh_prod * neu_prior_prob)
+                all_post_probs.append(sentence_sw_pos_lh_prod * sw_pos_prior_prob)
+                all_post_probs.append(sentence_pos_lh_prod * pos_prior_prob)
         
 
         elif number_classes == 3:
@@ -163,9 +199,31 @@ class classifier:
             neu_prior_prob = class_prior_prob_list[1]
             pos_prior_prob = class_prior_prob_list[2]
 
-            all_post_probs.append(sentence_neg_lh_prod * neg_prior_prob)
-            all_post_probs.append(sentence_neu_lh_prod * neu_prior_prob)
-            all_post_probs.append(sentence_pos_lh_prod * pos_prior_prob)
+
+            if self.features == 'features': 
+                feature_ops = feature_selection(self.features, number_classes) # create a feature selection object
+
+                # change likelihoods according to adjectives present in sentence
+                lh_modification_vals = feature_ops.find_adjectives(sentence)
+
+                # add negation sentiment value if there are any
+                lh_modification_vals[0] += (feature_ops.negation(sentence))
+
+                # add intensifier value if there are any
+                lh_modification_vals[2] += (feature_ops.intensifier(sentence))
+
+                sentence_lh_list = [sentence_neg_lh_prod, sentence_neu_lh_prod, sentence_pos_lh_prod]
+
+                modified_lh_list = [sum(val) for val in zip(sentence_lh_list, lh_modification_vals)]  
+
+                all_post_probs.append(modified_lh_list[0] * neg_prior_prob)
+                all_post_probs.append(modified_lh_list[1] * neu_prior_prob)
+                all_post_probs.append(modified_lh_list[1] * pos_prior_prob)
+
+            else:
+                all_post_probs.append(sentence_neg_lh_prod * neg_prior_prob)
+                all_post_probs.append(sentence_neu_lh_prod * neu_prior_prob)
+                all_post_probs.append(sentence_pos_lh_prod * pos_prior_prob)
 
         highest_prob_index = np.argmax(all_post_probs) # returns index of highest probability score
 

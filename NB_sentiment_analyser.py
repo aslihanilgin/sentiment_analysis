@@ -81,7 +81,6 @@ def evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_f
         # Reference: https://stackabuse.com/python-for-nlp-creating-bag-of-words-model-from-scratch/
         # tokenize sentences
         sentence_tokens = word_tokenize(sentence)
-        sentence_tokens = sentence.split()
 
         # Reference: https://www.programiz.com/python-programming/methods/dictionary/fromkeys
         sentence_lh_dict = { key : list() for key in range(number_classes)}
@@ -92,8 +91,9 @@ def evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_f
                     sentence_lh_dict[class_no].append(likelihood_for_features_dict[token][class_no]) 
             else: # token not in training bag of words
                 continue
+
         # get sentiment having maximum posterior probability
-        highest_prob_index = classification.compute_posterior_probability(sentence_lh_dict, class_prior_prob_list, number_classes)
+        highest_prob_index = classification.compute_posterior_probability(sentence_tokens, sentence_lh_dict, class_prior_prob_list, number_classes)
 
         # add the sentence id and the calculated sent value to sentiment_value_dict
         sentence_id = dev_df.loc[dev_df['Phrase'] == sentence, 'SentenceId'].item() # TODO: CHECK IF df IS GENERALISED
@@ -140,7 +140,7 @@ def main():
     print("Read all files.")
 
     # create a classifier object
-    classification = classifier()
+    classification = classifier(features)
 
     # kickstart classification
     print("Starting classification.")
