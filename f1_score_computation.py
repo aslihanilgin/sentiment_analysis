@@ -1,3 +1,8 @@
+import seaborn as sns
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+
 class f1_score_computation:
     def __init__(self, pred_vals_dict, df, number_classes):
         self.number_classes = number_classes
@@ -12,6 +17,9 @@ class f1_score_computation:
 
         for class_id in range(self.number_classes):
             tp_count, fp_count, fn_count, tn_count = self.compute_counts(class_id)
+
+            self.visualise_confusion_matrix(tp_count, fp_count, fn_count, tn_count)
+
             recall_val = self.compute_recall(tp_count, fn_count)
             precision_val = self.compute_precision(tp_count, fp_count)
 
@@ -78,5 +86,13 @@ class f1_score_computation:
             return 0
         else:
             return tp_count / (tp_count + fp_count)
+
+    def visualise_confusion_matrix(self, tp_count, fp_count, fn_count, tn_count):
+        # Reference: https://medium.com/@dtuk81/confusion-matrix-visualization-fc31e3f30fea
+        cf_matrix = [[tp_count, fp_count], [fn_count, tn_count]]
+        df_cm = pd.DataFrame(cf_matrix,  ["Retrieved", "Not Retrieved"], ["Relevant", "Non-relevant"])
+        sns.heatmap(df_cm, annot=True, fmt='.1f')
+
+        plt.show()
 
 
