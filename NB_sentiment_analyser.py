@@ -159,14 +159,13 @@ def main():
 
     # TODO: placeholder
     macro_f1_score = 0
-    features = "all_words"
     #You need to change this in order to return your macro-F1 score for the dev set
 
     """
     IMPORTANT: your code should return the lines below. 
     However, make sure you are also implementing a function to save the class predictions on dev and test sets as specified in the assignment handout
     """
-    #print("Student\tNumber of classes\tFeatures\tmacro-F1(dev)\tAccuracy(dev)")
+    # print("Student\tNumber of classes\tFeatures\tmacro-F1(dev)\tAccuracy(dev)")
     print("%s\t%d\t%s\t%f" % (USER_ID, number_classes, features, macro_f1_score))
 
 if __name__ == "__main__":

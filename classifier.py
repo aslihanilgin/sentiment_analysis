@@ -12,11 +12,11 @@ class classifier:
     def pre_process_sentences(self, df):
 
         for sentence in df["Phrase"]:
-            # lowercase all phrases, replace 's with is 
+            # lowercase all phrases
             lower_sentences = sentence.lower()
-            lc_repl_sentence = lower_sentences.replace("'s", "is")
+
             # remove punctuation
-            rm_punc_sentence = re.sub(r'[^\w\s]','',lc_repl_sentence)
+            rm_punc_sentence = re.sub(r'[^\w\s]','',lower_sentences)
 
             df['Phrase'] = df['Phrase'].replace([sentence], rm_punc_sentence)
         
@@ -39,7 +39,7 @@ class classifier:
 
             # remove stop words
             # Reference: https://stackoverflow.com/questions/5486337/how-to-remove-stop-words-using-nltk-or-python
-            # tokens_wo_sw = [word for word in sentence_tokens if word not in stopwords.words('english')]
+            sentence_tokens = [word for word in sentence_tokens if word not in stopwords.words('english')]
 
             for token in sentence_tokens:
 
