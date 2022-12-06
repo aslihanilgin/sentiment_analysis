@@ -67,7 +67,7 @@ def start_classification(classification, train_df, number_classes):
     # training done
     
     
-def evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes):
+def evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, cm_bool):
 
     print("Evaluating dev file.")
 
@@ -100,7 +100,7 @@ def evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_f
         
         pred_sentiment_value_dict[sentence_id] = highest_prob_index
 
-    result = f1_score_computation(pred_sentiment_value_dict, dev_df, number_classes) # compare pred dev vs actual dev
+    result = f1_score_computation(pred_sentiment_value_dict, dev_df, number_classes, cm_bool) # compare pred dev vs actual dev
     dev_macro_f1_score = result.compute_macro_f1_score()
 
     print("Evaluation finished.")
@@ -147,7 +147,7 @@ def main():
     class_prior_prob_list, likelihood_for_features_dict = start_classification(classification, train_df, number_classes)
 
     # evaluate dev file
-    dev_macro_f1_score = evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes)
+    dev_macro_f1_score = evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, confusion_matrix)
     print("Dev macro f1 score: {}".format(dev_macro_f1_score))
 
     # # TODO

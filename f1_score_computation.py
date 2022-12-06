@@ -4,9 +4,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 class f1_score_computation:
-    def __init__(self, pred_vals_dict, df, number_classes):
+    def __init__(self, pred_vals_dict, df, number_classes, cm_bool):
         self.number_classes = number_classes
         self.pred_vals_dict = pred_vals_dict
+        self.confusion_matrix = cm_bool
 
         sentiment_and_id_df = df.loc[:, ["SentenceId", "Sentiment"]]
         self.real_sentiment_values_dict = dict(sentiment_and_id_df.values.tolist())
@@ -18,7 +19,8 @@ class f1_score_computation:
         for class_id in range(self.number_classes):
             tp_count, fp_count, fn_count, tn_count = self.compute_counts(class_id)
 
-            self.visualise_confusion_matrix(tp_count, fp_count, fn_count, tn_count)
+            if self.confusion_matrix:
+                self.visualise_confusion_matrix(tp_count, fp_count, fn_count, tn_count)
 
             recall_val = self.compute_recall(tp_count, fn_count)
             precision_val = self.compute_precision(tp_count, fp_count)
