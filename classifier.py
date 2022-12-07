@@ -110,6 +110,20 @@ class classifier:
             class_likelihood = count / sent_count_list[class_no]
             likelihood_list.append(class_likelihood)
 
+        if self.features == 'features':
+            feature_ops = feature_selection()
+            neg_add_val = feature_ops.negation(token)
+            intense_add_val = feature_ops.intensifier(token)
+
+            likelihood_list[0] += neg_add_val
+
+            if number_classes == 5:
+                likelihood_list[1] += neg_add_val
+                likelihood_list[3] += intense_add_val
+                likelihood_list[4] += intense_add_val
+            if number_classes == 3:
+                likelihood_list[2] += intense_add_val
+
         return likelihood_list
 
 
@@ -122,19 +136,6 @@ class classifier:
             class_prior_prob = class_prior_prob_list[class_no]
 
             all_post_probs.append(class_lh_product * class_prior_prob)
-
-            # if self.features == 'features': 
-
-            #     feature_ops = feature_selection(self.features, number_classes) # create a feature selection object
-
-            #     # change likelihoods according to adjectives present in sentence
-            #     # lh_modification_vals = feature_ops.find_adjectives(sentence)
-
-            #     # add negation sentiment value if there are any
-            #     add_val_neg = (feature_ops.negation(sentence))
-
-            #     # add intensifier value if there are any
-            #     add_val_intens = (feature_ops.intensifier(sentence))
 
         highest_prob_index = np.argmax(all_post_probs) # returns index of highest probability score
 

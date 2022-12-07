@@ -91,7 +91,7 @@ def evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_f
 
         if feature_opt == 'features':
             # only choose relevant ones
-            feature_ops = feature_selection(number_classes)
+            feature_ops = feature_selection()
             tagged_sentence = feature_ops.tag(sentence) # returns a list of list 
             tagged_sentence = tagged_sentence[0]
 
