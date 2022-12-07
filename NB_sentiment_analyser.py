@@ -8,6 +8,7 @@ import argparse
 import pandas as pd
 from classifier import classifier
 from f1_score_computation import f1_score_computation
+from feature_selection import feature_selection
 
 from nltk.tokenize import word_tokenize
 
@@ -28,6 +29,17 @@ def parse_args():
     args=parser.parse_args()
     return args
 
+def map_5_val_to_3_val_scale(df):
+
+    df['Sentiment'] = df['Sentiment'].replace(1, 0)
+    df['Sentiment'] = df['Sentiment'].replace(2, 1)
+    df['Sentiment'] = df['Sentiment'].replace(3, 2)
+    df['Sentiment'] = df['Sentiment'].replace(4, 2)
+    print(df)
+
+    return df
+
+
 def start_classification(classification, train_df, number_classes):
 
     # preprocess dataframe
@@ -41,12 +53,7 @@ def start_classification(classification, train_df, number_classes):
     total_sentence_no = len(train_df) # compute total number of sentences
 
     # compute prior probabilities according to class number
-    if number_classes == 5:
-        prior_prob_neg, prior_prob_sw_neg, prior_prob_neu, prior_prob_sw_pos, prior_prob_pos = classification.compute_prior_probability(total_sentence_no, sent_count_list, number_classes)
-        class_prior_prob_list = [prior_prob_neg, prior_prob_sw_neg, prior_prob_neu, prior_prob_sw_pos, prior_prob_pos]
-    elif number_classes == 3:
-        prior_prob_neg, prior_prob_neu, prior_prob_pos = classification.compute_prior_probability(total_sentence_no, sent_count_list, number_classes)
-        class_prior_prob_list = [prior_prob_neg, prior_prob_neu, prior_prob_pos]
+    class_prior_prob_list = classification.compute_prior_probability(total_sentence_no, sent_count_list, number_classes)
 
     # 2. For each class:
     #   ▶ Compute likelihood of each feature
@@ -54,20 +61,20 @@ def start_classification(classification, train_df, number_classes):
 
     likelihood_for_features_dict = dict()
     # create a bag of words with their counts
-    all_words_and_counts_dict = classification.create_bag_of_words(train_df)
+    all_words_and_counts_dict = classification.create_bag_of_words(train_df, number_classes)
 
     print("Computing likelihoods for features.")
     for token in all_words_and_counts_dict.keys():
 
-        lh_list = classification.compute_likelihood_for_feature(token, sent_count_list, all_words_and_counts_dict, number_classes)
-        likelihood_for_features_dict[token] = lh_list
+        likelihood_list = classification.compute_likelihood_for_feature(token, sent_count_list, all_words_and_counts_dict, number_classes)
+        likelihood_for_features_dict[token] = likelihood_list
     
     return class_prior_prob_list, likelihood_for_features_dict 
 
     # training done
     
     
-def evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, cm_bool):
+def evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, cm_bool, features_str):
 
     print("Evaluating dev file.")
 
@@ -82,15 +89,31 @@ def evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_f
         # tokenize sentences
         sentence_tokens = word_tokenize(sentence)
 
+        # debug
+        # feature_ops = feature_selection(features_str, number_classes)
+
+        # adj_sentence = feature_ops.tag(sentence)
+
         # Reference: https://www.programiz.com/python-programming/methods/dictionary/fromkeys
         sentence_lh_dict = { key : list() for key in range(number_classes)}
-        # get likelihood list of every word in every sentence of dev data
         for token in sentence_tokens:
             if token in likelihood_for_features_dict:
                 for class_no in range(number_classes):
-                    sentence_lh_dict[class_no].append(likelihood_for_features_dict[token][class_no]) 
+                    sentence_lh_dict[token] = likelihood_for_features_dict[token][class_no]
             else: # token not in training bag of words
-                continue
+                sentence_lh_dict[token] = 0
+
+        # # get likelihood list of every word in every sentence of dev data
+        # if adj_sentence != None:
+        #     for token in adj_sentence:
+        #         if token in likelihood_for_features_dict:
+        #             for class_no in range(number_classes):
+        #                 sentence_lh_dict[class_no].append(likelihood_for_features_dict[token][class_no]) 
+        #         else: # token not in training bag of words
+        #             continue
+        # else: # adj_sentence is empty
+        #     continue
+            
 
         # get sentiment having maximum posterior probability
         highest_prob_index = classification.compute_posterior_probability(sentence_tokens, sentence_lh_dict, class_prior_prob_list, number_classes)
@@ -118,9 +141,6 @@ def main():
     
     #number of classes
     number_classes = inputs.classes
-    if not (number_classes == 3 or number_classes == 5):
-        print("Number of classes specified is not applicable. Defaulting to 5.")
-        number_classes = 5
     
     #accepted values "features" to use your features or "all_words" to use all words (default = all_words)
     features = inputs.features
@@ -137,6 +157,10 @@ def main():
     dev_df = pd.read_csv(dev, delimiter = "\t")
     test_df = pd.read_csv(test, delimiter = "\t")
 
+    if number_classes == 3:
+        train_df = map_5_val_to_3_val_scale(train_df)
+        dev_df = map_5_val_to_3_val_scale(dev_df)
+
     print("Read all files.")
 
     # create a classifier object
@@ -147,7 +171,7 @@ def main():
     class_prior_prob_list, likelihood_for_features_dict = start_classification(classification, train_df, number_classes)
 
     # evaluate dev file
-    dev_macro_f1_score = evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, confusion_matrix)
+    dev_macro_f1_score = evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, confusion_matrix, features)
     print("Dev macro f1 score: {}".format(dev_macro_f1_score))
 
     # # TODO

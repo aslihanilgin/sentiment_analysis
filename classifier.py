@@ -16,9 +16,6 @@ class classifier:
     # - removing stop words
     def pre_process_sentences(self, df):
 
-        # debug
-        import pdb; pdb.set_trace()
-
         for sentence in df["Phrase"]:
             # lowercase all phrases
             lower_sentences = sentence.lower()
@@ -42,11 +39,13 @@ class classifier:
         print(df)
         return df
     
-    def create_bag_of_words(self, df):
+    def create_bag_of_words(self, df, number_classes):
+
+        # TODO: CAN DO THIS IN THE PREPROCESSING STEP TO AVOID ANOTHER L=OOP THROUGH DATAFRAME
 
         print("Creating bag of words.")
 
-        # Create a bag of words with counts for each 5 class
+        # Create a bag of words with counts for each class
         all_words_and_counts = dict()
 
         for sentence in df["Phrase"]:
@@ -65,7 +64,7 @@ class classifier:
                 if token not in all_words_and_counts.keys(): # create a key with token if it doesn't exist in bag of words
                     all_words_and_counts[token] = list()
                     # initialise list with values 0 
-                    all_words_and_counts[token] = [0] * 5 # -> [neg, sw_neg, neu, sw_pos, pos] 
+                    all_words_and_counts[token] = [0] * number_classes # -> [neg, sw_neg, neu, sw_pos, pos] 
                     all_words_and_counts[token][sent_value] = 1
                 else:
                     # increment the count value
@@ -78,152 +77,64 @@ class classifier:
     def compute_total_sent_counts(self, df, number_classes):
         # get count of sentiments
 
-        total_neg_word_count = len(df.loc[df['Sentiment'] == 0, ['Phrase']])
-        total_sw_neg_word_count =  len(df.loc[df['Sentiment'] == 1, ['Phrase']])
-        total_neu_word_count = len(df.loc[df['Sentiment'] == 2, ['Phrase']])
-        total_sw_pos_word_count = len(df.loc[df['Sentiment'] == 3, ['Phrase']])
-        total_pos_word_count = len(df.loc[df['Sentiment'] == 4, ['Phrase']])
+        count_list = list()
 
-        if number_classes == 5:
-            count_list = [total_neg_word_count, total_sw_neg_word_count, total_neu_word_count, total_sw_pos_word_count, total_pos_word_count]
-        elif number_classes == 3:
-            count_list = [(total_neg_word_count + total_sw_neg_word_count), total_neu_word_count, (total_sw_pos_word_count + total_pos_word_count)]
-        
+        for class_no in range(number_classes):
+            count = len(df.loc[df['Sentiment'] == class_no, ['Phrase']])
+
+            count_list.append(count)
+
         return count_list
 
     def compute_prior_probability(self, total_sentence_no, count_list, number_classes):
 
-        if number_classes == 5: 
-            prior_prob_neg = count_list[0] / total_sentence_no
-            prior_prob_sw_neg = count_list[1] / total_sentence_no
-            prior_prob_neu = count_list[2] / total_sentence_no
-            prior_prob_sw_pos = count_list[3] / total_sentence_no
-            prior_prob_pos = count_list[4] / total_sentence_no
-            
-            return prior_prob_neg, prior_prob_sw_neg, prior_prob_neu, prior_prob_sw_pos, prior_prob_pos
+        class_prior_probs = list()
 
-        elif number_classes == 3: 
-            prior_prob_neg = count_list[0] / total_sentence_no
-            prior_prob_neu = count_list[1] / total_sentence_no
-            prior_prob_pos = count_list[2] / total_sentence_no
+        for class_no in range(number_classes):
+            prior_prob = count_list[class_no] / total_sentence_no
+            class_prior_probs.append(prior_prob)
 
-            return prior_prob_neg, prior_prob_neu, prior_prob_pos
+        return class_prior_probs
 
     # Compute likelihood for 5 sentiment values for a token
     def compute_likelihood_for_feature(self, token, sent_count_list, all_words_and_counts_dict, number_classes):
+        
+        # list --> [neg, sw_neg, neu, sw_pos, pos] if 5 class
+        # list --> [neg, neu, pos] if 3 class
+        token_dict_vals = all_words_and_counts_dict[token] 
 
-        if number_classes == 5:
+        likelihood_list = list()
 
-            token_dict_vals = all_words_and_counts_dict[token] # list --> [neg, sw_neg, neu, sw_pos, pos]
-            neg_c = token_dict_vals[0]
-            sw_neg_c = token_dict_vals[1]
-            neu_c = token_dict_vals[2]
-            sw_pos_c = token_dict_vals[3]
-            pos_c = token_dict_vals[4]
+        for class_no in range(number_classes):
+            count = token_dict_vals[class_no]
+            class_likelihood = count / sent_count_list[class_no]
+            likelihood_list.append(class_likelihood)
 
-            neg_lh = neg_c / sent_count_list[0]
-            sw_neg_lh = sw_neg_c / sent_count_list[1]
-            neu_lh = neu_c / sent_count_list[2]
-            sw_pos_lh = sw_pos_c / sent_count_list[3]
-            pos_lh = pos_c / sent_count_list[4]
+        return likelihood_list
 
-            return [neg_lh, sw_neg_lh, neu_lh, sw_pos_lh, pos_lh]   
-
-        if number_classes == 3:
-
-            token_dict_vals = all_words_and_counts_dict[token] # list --> [neg, neu, pos]
-            neg_c = token_dict_vals[0] + token_dict_vals[1]
-            neu_c = token_dict_vals[2]
-            pos_c = token_dict_vals[3] + token_dict_vals[4]
-
-            neg_lh = neg_c / sent_count_list[0]
-            neu_lh = neu_c / sent_count_list[1]
-            pos_lh = pos_c / sent_count_list[2]
-
-            return [neg_lh, neu_lh, pos_lh]
 
     def compute_posterior_probability(self, sentence, sentence_lh_dict, class_prior_prob_list, number_classes):
 
         all_post_probs = list()
 
-        if number_classes == 5:
-            # TODO: can refactor it 
-            sentence_neg_lh_prod = np.prod(np.array(sentence_lh_dict[0]), where=np.array(sentence_lh_dict[0])>0)
-            sentence_sw_neg_lh_prod = np.prod(np.array(sentence_lh_dict[1]), where=np.array(sentence_lh_dict[1])>0)
-            sentence_neu_lh_prod = np.prod(np.array(sentence_lh_dict[2]), where=np.array(sentence_lh_dict[2])>0)
-            sentence_sw_pos_lh_prod = np.prod(np.array(sentence_lh_dict[3]), where=np.array(sentence_lh_dict[3])>0)
-            sentence_pos_lh_prod = np.prod(np.array(sentence_lh_dict[4]), where=np.array(sentence_lh_dict[4])>0)
+        for class_no in range(number_classes):
+            class_lh_product = np.prod(np.array(sentence_lh_dict[class_no]), where=np.array(sentence_lh_dict[class_no])>0)
+            class_prior_prob = class_prior_prob_list[class_no]
 
-            neg_prior_prob = class_prior_prob_list[0]
-            sw_neg_prior_prob = class_prior_prob_list[1]
-            neu_prior_prob = class_prior_prob_list[2]
-            sw_pos_prior_prob = class_prior_prob_list[3]
-            pos_prior_prob = class_prior_prob_list[4]
+            all_post_probs.append(class_lh_product * class_prior_prob)
 
-            if self.features == 'features': 
-                feature_ops = feature_selection(self.features, number_classes) # create a feature selection object
+            # if self.features == 'features': 
 
-                # change likelihoods according to adjectives present in sentence
-                # lh_modification_vals = feature_ops.find_adjectives(sentence)
+            #     feature_ops = feature_selection(self.features, number_classes) # create a feature selection object
 
-                # add negation sentiment value if there are any
-                add_val_neg = (feature_ops.negation(sentence))
+            #     # change likelihoods according to adjectives present in sentence
+            #     # lh_modification_vals = feature_ops.find_adjectives(sentence)
 
-                # add intensifier value if there are any
-                add_val_intens = (feature_ops.intensifier(sentence))
+            #     # add negation sentiment value if there are any
+            #     add_val_neg = (feature_ops.negation(sentence))
 
-                # sentence_lh_list = [sentence_neg_lh_prod, sentence_sw_neg_lh_prod, sentence_neu_lh_prod, sentence_sw_pos_lh_prod, sentence_pos_lh_prod]
-
-                # modified_lh_list = [sum(val) for val in zip(sentence_lh_list, lh_modification_vals)]  
-
-                all_post_probs.append((sentence_neg_lh_prod * neg_prior_prob)+add_val_neg)
-                all_post_probs.append((sentence_sw_neg_lh_prod * sw_neg_prior_prob)+add_val_neg)
-                all_post_probs.append(sentence_neu_lh_prod * neu_prior_prob)
-                all_post_probs.append((sentence_sw_pos_lh_prod * sw_pos_prior_prob)+add_val_intens)
-                all_post_probs.append(sentence_pos_lh_prod * pos_prior_prob+add_val_intens)
-
-            else:
-                all_post_probs.append(sentence_neg_lh_prod * neg_prior_prob)
-                all_post_probs.append(sentence_sw_neg_lh_prod * sw_neg_prior_prob)
-                all_post_probs.append(sentence_neu_lh_prod * neu_prior_prob)
-                all_post_probs.append(sentence_sw_pos_lh_prod * sw_pos_prior_prob)
-                all_post_probs.append(sentence_pos_lh_prod * pos_prior_prob)
-        
-
-        elif number_classes == 3:
-            sentence_neg_lh_prod = np.prod(np.array(sentence_lh_dict[0]), where=np.array(sentence_lh_dict[0])>0)
-            sentence_neu_lh_prod = np.prod(np.array(sentence_lh_dict[1]), where=np.array(sentence_lh_dict[1])>0)
-            sentence_pos_lh_prod = np.prod(np.array(sentence_lh_dict[2]), where=np.array(sentence_lh_dict[2])>0)
-
-            neg_prior_prob = class_prior_prob_list[0]
-            neu_prior_prob = class_prior_prob_list[1]
-            pos_prior_prob = class_prior_prob_list[2]
-
-
-            if self.features == 'features': 
-                feature_ops = feature_selection(self.features, number_classes) # create a feature selection object
-
-                # change likelihoods according to adjectives present in sentence
-                lh_modification_vals = feature_ops.find_adjectives(sentence)
-
-                # add negation sentiment value if there are any
-                lh_modification_vals[0] += (feature_ops.negation(sentence))
-
-                # add intensifier value if there are any
-                lh_modification_vals[2] += (feature_ops.intensifier(sentence))
-
-                sentence_lh_list = [sentence_neg_lh_prod, sentence_neu_lh_prod, sentence_pos_lh_prod]
-
-                modified_lh_list = [sum(val) for val in zip(sentence_lh_list, lh_modification_vals)]  
-
-                all_post_probs.append(modified_lh_list[0] * neg_prior_prob)
-                all_post_probs.append(modified_lh_list[1] * neu_prior_prob)
-                all_post_probs.append(modified_lh_list[1] * pos_prior_prob)
-
-            else:
-                all_post_probs.append(sentence_neg_lh_prod * neg_prior_prob)
-                all_post_probs.append(sentence_neu_lh_prod * neu_prior_prob)
-                all_post_probs.append(sentence_pos_lh_prod * pos_prior_prob)
+            #     # add intensifier value if there are any
+            #     add_val_intens = (feature_ops.intensifier(sentence))
 
         highest_prob_index = np.argmax(all_post_probs) # returns index of highest probability score
 
