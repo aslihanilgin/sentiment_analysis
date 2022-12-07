@@ -110,6 +110,20 @@ class classifier:
             class_likelihood = count / sent_count_list[class_no]
             likelihood_list.append(class_likelihood)
 
+        if self.features == 'features':
+            feature_ops = feature_selection()
+            neg_add_val = feature_ops.negation(token)
+            intense_add_val = feature_ops.intensifier(token)
+
+            likelihood_list[0] += neg_add_val
+
+            if number_classes == 5:
+                likelihood_list[1] += neg_add_val
+                likelihood_list[3] += intense_add_val
+                likelihood_list[4] += intense_add_val
+            if number_classes == 3:
+                likelihood_list[2] += intense_add_val
+
         return likelihood_list
 
 
