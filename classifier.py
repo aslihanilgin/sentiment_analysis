@@ -139,29 +139,4 @@ class classifier:
         highest_prob_index = np.argmax(all_post_probs) # returns index of highest probability score
 
         return highest_prob_index
-
-    def count_sentiment_vals(self, df):
-
-        total_sentence_no = len(df)
-
-        total_neg_count = 0
-        total_sw_neg_count = 0
-        total_neu_count = 0
-        total_sw_pos_count = 0
-        total_pos_count = 0
-
-        for sent_val in df["Sentiment"]:
-            if sent_val == 0:
-                neg_count += 1
-            if sent_val == 1:
-                sw_neg_count += 1
-            if sent_val == 2:
-                neu_count += 1
-            if sent_val == 3:
-                sw_pos_count += 1
-            if sent_val == 4:
-                pos_count += 1
-
-        return total_sentence_no, total_neg_count, total_sw_neg_count, total_neu_count, total_sw_pos_count, total_pos_count
-
         
