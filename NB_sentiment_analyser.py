@@ -35,7 +35,6 @@ def map_5_val_to_3_val_scale(df):
     df['Sentiment'] = df['Sentiment'].replace(2, 1)
     df['Sentiment'] = df['Sentiment'].replace(3, 2)
     df['Sentiment'] = df['Sentiment'].replace(4, 2)
-    print(df)
 
     return df
 
@@ -74,9 +73,9 @@ def start_classification(classification, train_df, number_classes):
     # training done
     
     
-def evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, cm_bool, feature_opt):
+def evaluate_file(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, feature_opt):
 
-    print("Evaluating dev file.")
+    print("Evaluating file.")
 
     # preprocess dataframe
     dev_df = classification.pre_process_sentences(dev_df)
@@ -84,6 +83,7 @@ def evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_f
     pred_sentiment_value_dict = dict()
 
     # Calculate posterior probability for every sentence in dev file
+    loop_count = 0 
     for sentence in dev_df["Phrase"]:
         # Reference: https://stackabuse.com/python-for-nlp-creating-bag-of-words-model-from-scratch/
         # tokenize sentences
@@ -113,16 +113,15 @@ def evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_f
         highest_prob_index = classification.compute_posterior_probability(sentence_tokens, sentence_lh_dict, class_prior_prob_list, number_classes)
 
         # add the sentence id and the calculated sent value to sentiment_value_dict
-        sentence_id = dev_df.loc[dev_df['Phrase'] == sentence, 'SentenceId'].item() # TODO: CHECK IF df IS GENERALISED
+        sentence_id = dev_df.iloc[[loop_count]]['SentenceId'].item()
         
         pred_sentiment_value_dict[sentence_id] = highest_prob_index
 
-    result = f1_score_computation(pred_sentiment_value_dict, dev_df, number_classes, cm_bool) # compare pred dev vs actual dev
-    dev_macro_f1_score = result.compute_macro_f1_score()
+        loop_count += 1
+
+    return pred_sentiment_value_dict
 
     print("Evaluation finished.")
-
-    return dev_macro_f1_score
 
 def main():
     
@@ -165,26 +164,20 @@ def main():
     class_prior_prob_list, likelihood_for_features_dict = start_classification(classification, train_df, number_classes)
 
     # evaluate dev file
-    dev_macro_f1_score = evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, confusion_matrix, features)
+    pred_sentiment_value_dict = evaluate_file(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, features)
+    f1_score_comp = f1_score_computation(pred_sentiment_value_dict, dev_df, number_classes, confusion_matrix) # compare pred dev vs actual dev
+    dev_macro_f1_score = f1_score_comp.compute_macro_f1_score()
     print("Dev macro f1 score: {}".format(dev_macro_f1_score))
 
-    # # TODO
-    # # evaluate test file
-    # evaluate_test()
-
-    # use the training data to get all calculations etc and apply it on the dev data
-
-
-    # TODO: placeholder
-    macro_f1_score = 0
-    #You need to change this in order to return your macro-F1 score for the dev set
+    # evaluate test file
+    pred_sentiment_value_dict = evaluate_file(classification, test_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, features)
 
     """
     IMPORTANT: your code should return the lines below. 
     However, make sure you are also implementing a function to save the class predictions on dev and test sets as specified in the assignment handout
     """
     # print("Student\tNumber of classes\tFeatures\tmacro-F1(dev)\tAccuracy(dev)")
-    print("%s\t%d\t%s\t%f" % (USER_ID, number_classes, features, macro_f1_score))
+    print("%s\t%d\t%s\t%f" % (USER_ID, number_classes, features, dev_macro_f1_score))
 
 if __name__ == "__main__":
     main()

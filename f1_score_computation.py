@@ -44,9 +44,6 @@ class f1_score_computation:
 
     def compute_counts(self, class_id):
 
-        #debug
-        # import pdb; pdb.set_trace()
-
         tp_count = 0
         fp_count = 0
         fn_count = 0

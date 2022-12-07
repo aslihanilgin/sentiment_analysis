@@ -22,10 +22,11 @@ class classifier:
 
             # remove punctuation
             rm_punc_sentence = re.sub(r'[^\w\s]','',lower_sentences)
+            repl_sentence = rm_punc_sentence.replace("nt", "not")
 
             # Reference: https://stackabuse.com/python-for-nlp-creating-bag-of-words-model-from-scratch/
             # tokenize sentences
-            sentence_tokens = word_tokenize(rm_punc_sentence)
+            sentence_tokens = word_tokenize(repl_sentence)
 
             # remove stop words
             # Reference: https://stackoverflow.com/questions/5486337/how-to-remove-stop-words-using-nltk-or-python
@@ -35,8 +36,7 @@ class classifier:
             df['Phrase'] = df['Phrase'].replace([sentence], rep_sentence)
         
         print("Preprocessed sentences.")
-        # debug
-        print(df)
+
         return df
     
     def create_bag_of_words(self, df, number_classes):
