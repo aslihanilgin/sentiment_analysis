@@ -74,7 +74,7 @@ def start_classification(classification, train_df, number_classes):
     # training done
     
     
-def evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, cm_bool, features_str):
+def evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, cm_bool, feature_opt):
 
     print("Evaluating dev file.")
 
@@ -89,31 +89,25 @@ def evaluate_dev(classification, dev_df, class_prior_prob_list, likelihood_for_f
         # tokenize sentences
         sentence_tokens = word_tokenize(sentence)
 
-        # debug
-        # feature_ops = feature_selection(features_str, number_classes)
+        if feature_opt == 'features':
+            # only choose relevant ones
+            feature_ops = feature_selection(number_classes)
+            tagged_sentence = feature_ops.tag(sentence) # returns a list of list 
+            tagged_sentence = tagged_sentence[0]
 
-        # adj_sentence = feature_ops.tag(sentence)
+            if tagged_sentence != None:
+                sentence_tokens = tagged_sentence
+            else: # no useful features in the sentence
+                continue
 
         # Reference: https://www.programiz.com/python-programming/methods/dictionary/fromkeys
         sentence_lh_dict = { key : list() for key in range(number_classes)}
         for token in sentence_tokens:
             if token in likelihood_for_features_dict:
                 for class_no in range(number_classes):
-                    sentence_lh_dict[token] = likelihood_for_features_dict[token][class_no]
+                    sentence_lh_dict[class_no].append(likelihood_for_features_dict[token][class_no])
             else: # token not in training bag of words
-                sentence_lh_dict[token] = 0
-
-        # # get likelihood list of every word in every sentence of dev data
-        # if adj_sentence != None:
-        #     for token in adj_sentence:
-        #         if token in likelihood_for_features_dict:
-        #             for class_no in range(number_classes):
-        #                 sentence_lh_dict[class_no].append(likelihood_for_features_dict[token][class_no]) 
-        #         else: # token not in training bag of words
-        #             continue
-        # else: # adj_sentence is empty
-        #     continue
-            
+                sentence_lh_dict[class_no].append(0)
 
         # get sentiment having maximum posterior probability
         highest_prob_index = classification.compute_posterior_probability(sentence_tokens, sentence_lh_dict, class_prior_prob_list, number_classes)
