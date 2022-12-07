@@ -137,19 +137,6 @@ class classifier:
 
             all_post_probs.append(class_lh_product * class_prior_prob)
 
-            # if self.features == 'features': 
-
-            #     feature_ops = feature_selection(self.features, number_classes) # create a feature selection object
-
-            #     # change likelihoods according to adjectives present in sentence
-            #     # lh_modification_vals = feature_ops.find_adjectives(sentence)
-
-            #     # add negation sentiment value if there are any
-            #     add_val_neg = (feature_ops.negation(sentence))
-
-            #     # add intensifier value if there are any
-            #     add_val_intens = (feature_ops.intensifier(sentence))
-
         highest_prob_index = np.argmax(all_post_probs) # returns index of highest probability score
 
         return highest_prob_index

@@ -1,9 +1,6 @@
 import nltk.sentiment.vader as vd
 from nltk.tokenize import word_tokenize
 import nltk
-import pandas as pd
-
-
 
 class feature_selection:
 
