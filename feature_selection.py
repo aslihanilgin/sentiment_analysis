@@ -1,5 +1,4 @@
 import nltk.sentiment.vader as vd
-from nltk.tokenize import word_tokenize
 import nltk
 
 from sklearn.feature_extraction.text import TfidfTransformer
