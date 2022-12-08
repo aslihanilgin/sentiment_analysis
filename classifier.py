@@ -11,6 +11,7 @@ class classifier:
 
     def __init__(self, features):
         self.features = features
+        self.feature_ops = feature_selection()
 
     # Preprocesses sentences within the df by:
     # - lowercasing
@@ -18,11 +19,12 @@ class classifier:
     def pre_process_sentences(self, df):
 
         for sentence in df["Phrase"]:
+
             # lowercase all phrases
-            lower_sentences = sentence.lower()
+            lower_sentence = sentence.lower()
 
             # remove punctuation
-            rm_punc_sentence = re.sub(r'[^\w\s]','',lower_sentences)
+            rm_punc_sentence = re.sub(r'[^\w\s]','',lower_sentence)
             # remove numbers
             rm_num_sentence = re.sub(r'[0-9]', '', rm_punc_sentence)
             # replace nt with not
@@ -32,14 +34,18 @@ class classifier:
             # tokenize sentences
             sentence_tokens = word_tokenize(repl_sentence)
 
+            # remove stop words
+            # Reference: https://stackoverflow.com/questions/5486337/how-to-remove-stop-words-using-nltk-or-python
+            sentence_tokens = [word for word in sentence_tokens if word not in stopwords.words('english')]
+
+            if self.features == 'features':
+                sentence_tokens = self.feature_ops.tag(sentence_tokens)
+
             # stemming
             ps = PorterStemmer()
             stemmed_sentence_tokens = [ps.stem(t) for t in sentence_tokens]
 
-            # remove stop words
-            # Reference: https://stackoverflow.com/questions/5486337/how-to-remove-stop-words-using-nltk-or-python
-            sentence_tokens = [word for word in stemmed_sentence_tokens if word not in stopwords.words('english')]
-            rep_sentence = ' '.join(sentence_tokens)
+            rep_sentence = ' '.join(stemmed_sentence_tokens)
 
             df['Phrase'] = df['Phrase'].replace([sentence], rep_sentence)
         
@@ -121,9 +127,8 @@ class classifier:
             likelihood_list.append(class_likelihood)
 
         if self.features == 'features':
-            feature_ops = feature_selection()
-            neg_add_val = feature_ops.negation(token)
-            intense_add_val = feature_ops.intensifier(token)
+            neg_add_val = self.feature_ops.negation(token)
+            intense_add_val = self.feature_ops.intensifier(token)
 
             likelihood_list[0] += neg_add_val
 

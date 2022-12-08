@@ -40,7 +40,7 @@ def map_5_val_to_3_val_scale(df):
     return df
 
 
-def start_classification(classification, train_df, number_classes):
+def start_classification(classification, train_df, number_classes, feature_opt):
 
     # preprocess dataframe
     train_df = classification.pre_process_sentences(train_df)
@@ -62,6 +62,30 @@ def start_classification(classification, train_df, number_classes):
     likelihood_for_features_dict = dict()
     # create a bag of words with their counts
     all_words_and_counts_dict = classification.create_bag_of_words(train_df, number_classes)
+
+    if feature_opt == 'features':
+        for sentence in train_df["Phrase"]:
+            # Reference: https://stackabuse.com/python-for-nlp-creating-bag-of-words-model-from-scratch/
+            # tokenize sentences
+            sentence_tokens = word_tokenize(sentence)
+        
+            # only choose relevant ones
+            feature_ops = feature_selection()
+            tfidf_selected_tokens = feature_ops.tfidf(sentence_tokens, all_words_and_counts_dict)
+            # tagged_sentence = feature_ops.tag(sentence) # returns a list of list 
+            # tagged_sentence = tagged_sentence[0]
+
+            if tfidf_selected_tokens != None:
+                sentence_tokens = tfidf_selected_tokens
+            else: # no useful features in the sentence
+                continue
+
+
+            rep_sentence = ' '.join(sentence_tokens)
+
+            train_df['Phrase'] = train_df['Phrase'].replace([sentence], rep_sentence)
+
+    print("selected features df: {}".format(train_df))
 
     print("Computing likelihoods for features.")
     for token in all_words_and_counts_dict.keys():
@@ -90,17 +114,17 @@ def evaluate_file(classification, eval_df, class_prior_prob_list, likelihood_for
         # tokenize sentences
         sentence_tokens = word_tokenize(sentence)
 
-        if feature_opt == 'features':
-            # only choose relevant ones
-            feature_ops = feature_selection()
-            tfidf_selected_tokens = feature_ops.tfidf(sentence_tokens, all_words_and_counts_dict)
-            # tagged_sentence = feature_ops.tag(sentence) # returns a list of list 
-            # tagged_sentence = tagged_sentence[0]
+        # if feature_opt == 'features':
+        #     # only choose relevant ones
+        #     feature_ops = feature_selection()
+        #     tfidf_selected_tokens = feature_ops.tfidf(sentence_tokens, all_words_and_counts_dict)
+        #     # tagged_sentence = feature_ops.tag(sentence) # returns a list of list 
+        #     # tagged_sentence = tagged_sentence[0]
 
-            if tfidf_selected_tokens != None:
-                sentence_tokens = tfidf_selected_tokens
-            else: # no useful features in the sentence
-                continue
+        #     if tfidf_selected_tokens != None:
+        #         sentence_tokens = tfidf_selected_tokens
+        #     else: # no useful features in the sentence
+        #         continue
 
         # Reference: https://www.programiz.com/python-programming/methods/dictionary/fromkeys
         sentence_lh_dict = { key : list() for key in range(number_classes)}
@@ -174,7 +198,7 @@ def main():
 
     # kickstart classification
     print("Starting classification.")
-    class_prior_prob_list, likelihood_for_features_dict, all_words_and_counts_dict = start_classification(classification, train_df, number_classes)
+    class_prior_prob_list, likelihood_for_features_dict, all_words_and_counts_dict = start_classification(classification, train_df, number_classes, features)
 
     # evaluate dev file
     dev_pred_sentiment_value_dict = evaluate_file(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, features, all_words_and_counts_dict)
