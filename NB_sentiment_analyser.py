@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument("dev")
     parser.add_argument("test")
     parser.add_argument("-classes", type=int)
-    parser.add_argument('-features', type=str, default="all_words", choices=["all_words", "features"])
+    parser.add_argument('-features', type=str, default="all_words", choices=["all_words", "features", "features_tfidf"])
     parser.add_argument('-output_files', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('-confusion_matrix', action=argparse.BooleanOptionalAction, default=False)
     args=parser.parse_args()
@@ -45,8 +45,8 @@ def start_classification(classification, train_df, number_classes, feature_opt):
     # preprocess dataframe
     train_df = classification.pre_process_sentences(train_df)
 
-    # 1. Compute prior probability of each class
- 
+    # Computing Prior Probabilities
+    
     # compute count for every sentiment class
     sent_count_list = classification.compute_total_sent_counts(train_df, number_classes)
     
@@ -55,47 +55,28 @@ def start_classification(classification, train_df, number_classes, feature_opt):
     # compute prior probabilities according to class number
     class_prior_prob_list = classification.compute_prior_probability(total_sentence_no, sent_count_list, number_classes)
 
-    # 2. For each class:
-    #   ▶ Compute likelihood of each feature
-        # TODO: this will be for specific tokens for selected tokens
+    # Computing Likelihoods 
 
     likelihood_for_features_dict = dict()
     # create a bag of words with their counts
     all_words_and_counts_dict = classification.create_bag_of_words(train_df, number_classes)
 
-    if feature_opt == 'features':
-        for sentence in train_df["Phrase"]:
-            # Reference: https://stackabuse.com/python-for-nlp-creating-bag-of-words-model-from-scratch/
-            # tokenize sentences
-            sentence_tokens = word_tokenize(sentence)
-        
-            # only choose relevant ones
-            feature_ops = feature_selection()
-            tfidf_selected_tokens = feature_ops.tfidf(sentence_tokens, all_words_and_counts_dict)
-            # tagged_sentence = feature_ops.tag(sentence) # returns a list of list 
-            # tagged_sentence = tagged_sentence[0]
+    words_to_compute_lh = all_words_and_counts_dict.keys()
 
-            if tfidf_selected_tokens != None:
-                sentence_tokens = tfidf_selected_tokens
-            else: # no useful features in the sentence
-                continue
-
-
-            rep_sentence = ' '.join(sentence_tokens)
-
-            train_df['Phrase'] = train_df['Phrase'].replace([sentence], rep_sentence)
+    if feature_opt == 'features_tfidf':
+        # only choose relevant ones
+        feature_ops = feature_selection()
+        tfidf_selected_tokens = feature_ops.tfidf(all_words_and_counts_dict)
+        words_to_compute_lh = tfidf_selected_tokens
 
     print("selected features df: {}".format(train_df))
 
     print("Computing likelihoods for features.")
-    for token in all_words_and_counts_dict.keys():
-
+    for token in words_to_compute_lh:
         likelihood_list = classification.compute_likelihood_for_feature(token, sent_count_list, all_words_and_counts_dict, number_classes)
         likelihood_for_features_dict[token] = likelihood_list
     
     return class_prior_prob_list, likelihood_for_features_dict, all_words_and_counts_dict
-
-    # training done
     
     
 def evaluate_file(classification, eval_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, feature_opt, all_words_and_counts_dict):
@@ -114,18 +95,6 @@ def evaluate_file(classification, eval_df, class_prior_prob_list, likelihood_for
         # tokenize sentences
         sentence_tokens = word_tokenize(sentence)
 
-        # if feature_opt == 'features':
-        #     # only choose relevant ones
-        #     feature_ops = feature_selection()
-        #     tfidf_selected_tokens = feature_ops.tfidf(sentence_tokens, all_words_and_counts_dict)
-        #     # tagged_sentence = feature_ops.tag(sentence) # returns a list of list 
-        #     # tagged_sentence = tagged_sentence[0]
-
-        #     if tfidf_selected_tokens != None:
-        #         sentence_tokens = tfidf_selected_tokens
-        #     else: # no useful features in the sentence
-        #         continue
-
         # Reference: https://www.programiz.com/python-programming/methods/dictionary/fromkeys
         sentence_lh_dict = { key : list() for key in range(number_classes)}
         for token in sentence_tokens:
@@ -133,10 +102,10 @@ def evaluate_file(classification, eval_df, class_prior_prob_list, likelihood_for
                 for class_no in range(number_classes):
                     sentence_lh_dict[class_no].append(likelihood_for_features_dict[token][class_no])
             else: # token not in training bag of words
-                sentence_lh_dict[class_no].append(0)
+                continue
 
         # get sentiment having maximum posterior probability
-        highest_prob_index = classification.compute_posterior_probability(sentence_tokens, sentence_lh_dict, class_prior_prob_list, number_classes)
+        highest_prob_index = classification.compute_posterior_probability(sentence_lh_dict, class_prior_prob_list, number_classes)
 
         # add the sentence id and the calculated sent value to sentiment_value_dict
         sentence_id = eval_df.iloc[[loop_count]]['SentenceId'].item()

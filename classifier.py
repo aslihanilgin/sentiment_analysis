@@ -44,7 +44,6 @@ class classifier:
             # stemming
             ps = PorterStemmer()
             stemmed_sentence_tokens = [ps.stem(t) for t in sentence_tokens]
-
             rep_sentence = ' '.join(stemmed_sentence_tokens)
 
             df['Phrase'] = df['Phrase'].replace([sentence], rep_sentence)
@@ -142,7 +141,7 @@ class classifier:
         return likelihood_list
 
 
-    def compute_posterior_probability(self, sentence, sentence_lh_dict, class_prior_prob_list, number_classes):
+    def compute_posterior_probability(self, sentence_lh_dict, class_prior_prob_list, number_classes):
 
         all_post_probs = list()
 
