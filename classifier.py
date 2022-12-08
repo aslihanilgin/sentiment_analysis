@@ -49,8 +49,6 @@ class classifier:
             df['Phrase'] = df['Phrase'].replace([sentence], rep_sentence)
         
         print("Preprocessed sentences.")
-        # debug
-        print(df)
 
         return df
     
