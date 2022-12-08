@@ -69,12 +69,12 @@ def start_classification(classification, train_df, number_classes):
         likelihood_list = classification.compute_likelihood_for_feature(token, sent_count_list, all_words_and_counts_dict, number_classes)
         likelihood_for_features_dict[token] = likelihood_list
     
-    return class_prior_prob_list, likelihood_for_features_dict 
+    return class_prior_prob_list, likelihood_for_features_dict, all_words_and_counts_dict
 
     # training done
     
     
-def evaluate_file(classification, eval_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, feature_opt):
+def evaluate_file(classification, eval_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, feature_opt, all_words_and_counts_dict):
 
     print("Evaluating file.")
 
@@ -93,11 +93,12 @@ def evaluate_file(classification, eval_df, class_prior_prob_list, likelihood_for
         if feature_opt == 'features':
             # only choose relevant ones
             feature_ops = feature_selection()
-            tagged_sentence = feature_ops.tag(sentence) # returns a list of list 
-            tagged_sentence = tagged_sentence[0]
+            tfidf_selected_tokens = feature_ops.tfidf(sentence_tokens, all_words_and_counts_dict)
+            # tagged_sentence = feature_ops.tag(sentence) # returns a list of list 
+            # tagged_sentence = tagged_sentence[0]
 
-            if tagged_sentence != None:
-                sentence_tokens = tagged_sentence
+            if tfidf_selected_tokens != None:
+                sentence_tokens = tfidf_selected_tokens
             else: # no useful features in the sentence
                 continue
 
@@ -173,15 +174,15 @@ def main():
 
     # kickstart classification
     print("Starting classification.")
-    class_prior_prob_list, likelihood_for_features_dict = start_classification(classification, train_df, number_classes)
+    class_prior_prob_list, likelihood_for_features_dict, all_words_and_counts_dict = start_classification(classification, train_df, number_classes)
 
     # evaluate dev file
-    dev_pred_sentiment_value_dict = evaluate_file(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, features)
+    dev_pred_sentiment_value_dict = evaluate_file(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, features, all_words_and_counts_dict)
     f1_score_comp = f1_score_computation(dev_pred_sentiment_value_dict, dev_df, number_classes, confusion_matrix) # compare pred dev vs actual dev
     dev_macro_f1_score = f1_score_comp.compute_macro_f1_score()
 
     # evaluate test file
-    test_pred_sentiment_value_dict = evaluate_file(classification, test_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, features)
+    test_pred_sentiment_value_dict = evaluate_file(classification, test_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, features, all_words_and_counts_dict)
 
     # write to output files
     produce_output_file('dev', number_classes, USER_ID, dev_pred_sentiment_value_dict)

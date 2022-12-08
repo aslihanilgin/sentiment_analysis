@@ -2,6 +2,7 @@ import numpy as np
 import re
 
 from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
 from feature_selection import feature_selection
 
@@ -22,20 +23,29 @@ class classifier:
 
             # remove punctuation
             rm_punc_sentence = re.sub(r'[^\w\s]','',lower_sentences)
-            repl_sentence = rm_punc_sentence.replace("nt", "not")
+            # remove numbers
+            rm_num_sentence = re.sub(r'[0-9]', '', rm_punc_sentence)
+            # replace nt with not
+            repl_sentence = rm_num_sentence.replace("nt", "not")
 
             # Reference: https://stackabuse.com/python-for-nlp-creating-bag-of-words-model-from-scratch/
             # tokenize sentences
             sentence_tokens = word_tokenize(repl_sentence)
 
+            # stemming
+            ps = PorterStemmer()
+            stemmed_sentence_tokens = [ps.stem(t) for t in sentence_tokens]
+
             # remove stop words
             # Reference: https://stackoverflow.com/questions/5486337/how-to-remove-stop-words-using-nltk-or-python
-            sentence_tokens = [word for word in sentence_tokens if word not in stopwords.words('english')]
+            sentence_tokens = [word for word in stemmed_sentence_tokens if word not in stopwords.words('english')]
             rep_sentence = ' '.join(sentence_tokens)
 
             df['Phrase'] = df['Phrase'].replace([sentence], rep_sentence)
         
         print("Preprocessed sentences.")
+        # debug
+        print(df)
 
         return df
     
