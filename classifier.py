@@ -1,7 +1,9 @@
 import numpy as np
 import re
+import nltk.sentiment.vader as vd
 
 from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
 from feature_selection import feature_selection
 
@@ -10,6 +12,7 @@ class classifier:
 
     def __init__(self, features):
         self.features = features
+        self.feature_ops = feature_selection()
 
     # Preprocesses sentences within the df by:
     # - lowercasing
@@ -17,12 +20,16 @@ class classifier:
     def pre_process_sentences(self, df):
 
         for sentence in df["Phrase"]:
+
             # lowercase all phrases
-            lower_sentences = sentence.lower()
+            lower_sentence = sentence.lower()
 
             # remove punctuation
-            rm_punc_sentence = re.sub(r'[^\w\s]','',lower_sentences)
-            repl_sentence = rm_punc_sentence.replace("nt", "not")
+            rm_punc_sentence = re.sub(r'[^\w\s]','',lower_sentence)
+            # remove numbers
+            rm_num_sentence = re.sub(r'[0-9]', '', rm_punc_sentence)
+            # replace nt with not
+            repl_sentence = rm_num_sentence.replace("nt", "not")
 
             # Reference: https://stackabuse.com/python-for-nlp-creating-bag-of-words-model-from-scratch/
             # tokenize sentences
@@ -30,12 +37,21 @@ class classifier:
 
             # remove stop words
             # Reference: https://stackoverflow.com/questions/5486337/how-to-remove-stop-words-using-nltk-or-python
-            sentence_tokens = [word for word in sentence_tokens if word not in stopwords.words('english')]
-            rep_sentence = ' '.join(sentence_tokens)
+            sentence_tokens = [word for word in sentence_tokens if (word not in stopwords.words('english')) or (word not in vd.VaderConstants.NEGATE) or (word not in vd.VaderConstants.BOOSTER_DICT)]
+
+            if self.features == 'features':
+                sentence_tokens = self.feature_ops.tag(sentence_tokens)
+
+            # stemming
+            ps = PorterStemmer()
+            stemmed_sentence_tokens = [ps.stem(t) for t in sentence_tokens if (t not in vd.VaderConstants.NEGATE) or (t not in vd.VaderConstants.BOOSTER_DICT)]
+            rep_sentence = ' '.join(stemmed_sentence_tokens)
 
             df['Phrase'] = df['Phrase'].replace([sentence], rep_sentence)
         
         print("Preprocessed sentences.")
+        # debug
+        print(df)
 
         return df
     
@@ -110,20 +126,6 @@ class classifier:
             class_likelihood = count / sent_count_list[class_no]
             likelihood_list.append(class_likelihood)
 
-        if self.features == 'features':
-            feature_ops = feature_selection()
-            neg_add_val = feature_ops.negation(token)
-            intense_add_val = feature_ops.intensifier(token)
-
-            likelihood_list[0] += neg_add_val
-
-            if number_classes == 5:
-                likelihood_list[1] += neg_add_val
-                likelihood_list[3] += intense_add_val
-                likelihood_list[4] += intense_add_val
-            if number_classes == 3:
-                likelihood_list[2] += intense_add_val
-
         return likelihood_list
 
 
@@ -137,7 +139,27 @@ class classifier:
 
             all_post_probs.append(class_lh_product * class_prior_prob)
 
+        if self.features == 'features':
+            neg_add_val = self.feature_ops.negation(sentence)
+            intense_add_val = self.feature_ops.intensifier(sentence)
+
+            if neg_add_val != None:
+                all_post_probs[0] += neg_add_val
+
+            if number_classes == 5:
+                if neg_add_val != None:
+                    all_post_probs[1] += neg_add_val
+                if intense_add_val != None:
+                    all_post_probs[3] += intense_add_val
+                    all_post_probs[4] += intense_add_val
+            if number_classes == 3:
+                if intense_add_val != None:
+                    all_post_probs[2] += intense_add_val
+
         highest_prob_index = np.argmax(all_post_probs) # returns index of highest probability score
 
         return highest_prob_index
+
+
+        
         

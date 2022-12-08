@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument("dev")
     parser.add_argument("test")
     parser.add_argument("-classes", type=int)
-    parser.add_argument('-features', type=str, default="all_words", choices=["all_words", "features"])
+    parser.add_argument('-features', type=str, default="all_words", choices=["all_words", "features", "features_tfidf"])
     parser.add_argument('-output_files', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('-confusion_matrix', action=argparse.BooleanOptionalAction, default=False)
     args=parser.parse_args()
@@ -40,13 +40,13 @@ def map_5_val_to_3_val_scale(df):
     return df
 
 
-def start_classification(classification, train_df, number_classes):
+def start_classification(classification, train_df, number_classes, feature_opt):
 
     # preprocess dataframe
     train_df = classification.pre_process_sentences(train_df)
 
-    # 1. Compute prior probability of each class
- 
+    # Computing Prior Probabilities
+    
     # compute count for every sentiment class
     sent_count_list = classification.compute_total_sent_counts(train_df, number_classes)
     
@@ -55,26 +55,29 @@ def start_classification(classification, train_df, number_classes):
     # compute prior probabilities according to class number
     class_prior_prob_list = classification.compute_prior_probability(total_sentence_no, sent_count_list, number_classes)
 
-    # 2. For each class:
-    #   ▶ Compute likelihood of each feature
-        # TODO: this will be for specific tokens for selected tokens
+    # Computing Likelihoods 
 
     likelihood_for_features_dict = dict()
     # create a bag of words with their counts
     all_words_and_counts_dict = classification.create_bag_of_words(train_df, number_classes)
 
-    print("Computing likelihoods for features.")
-    for token in all_words_and_counts_dict.keys():
+    words_to_compute_lh = all_words_and_counts_dict.keys()
 
+    if feature_opt == 'features_tfidf':
+        # only choose relevant ones
+        feature_ops = feature_selection()
+        tfidf_selected_tokens = feature_ops.tfidf(all_words_and_counts_dict)
+        words_to_compute_lh = tfidf_selected_tokens
+
+    print("Computing likelihoods for features.")
+    for token in words_to_compute_lh:
         likelihood_list = classification.compute_likelihood_for_feature(token, sent_count_list, all_words_and_counts_dict, number_classes)
         likelihood_for_features_dict[token] = likelihood_list
     
-    return class_prior_prob_list, likelihood_for_features_dict 
-
-    # training done
+    return class_prior_prob_list, likelihood_for_features_dict, all_words_and_counts_dict
     
     
-def evaluate_file(classification, eval_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, feature_opt):
+def evaluate_file(classification, eval_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, feature_opt, all_words_and_counts_dict):
 
     print("Evaluating file.")
 
@@ -90,17 +93,6 @@ def evaluate_file(classification, eval_df, class_prior_prob_list, likelihood_for
         # tokenize sentences
         sentence_tokens = word_tokenize(sentence)
 
-        if feature_opt == 'features':
-            # only choose relevant ones
-            feature_ops = feature_selection()
-            tagged_sentence = feature_ops.tag(sentence) # returns a list of list 
-            tagged_sentence = tagged_sentence[0]
-
-            if tagged_sentence != None:
-                sentence_tokens = tagged_sentence
-            else: # no useful features in the sentence
-                continue
-
         # Reference: https://www.programiz.com/python-programming/methods/dictionary/fromkeys
         sentence_lh_dict = { key : list() for key in range(number_classes)}
         for token in sentence_tokens:
@@ -108,10 +100,10 @@ def evaluate_file(classification, eval_df, class_prior_prob_list, likelihood_for
                 for class_no in range(number_classes):
                     sentence_lh_dict[class_no].append(likelihood_for_features_dict[token][class_no])
             else: # token not in training bag of words
-                sentence_lh_dict[class_no].append(0)
+                continue
 
         # get sentiment having maximum posterior probability
-        highest_prob_index = classification.compute_posterior_probability(sentence_tokens, sentence_lh_dict, class_prior_prob_list, number_classes)
+        highest_prob_index = classification.compute_posterior_probability(sentence, sentence_lh_dict, class_prior_prob_list, number_classes)
 
         # add the sentence id and the calculated sent value to sentiment_value_dict
         sentence_id = eval_df.iloc[[loop_count]]['SentenceId'].item()
@@ -173,15 +165,15 @@ def main():
 
     # kickstart classification
     print("Starting classification.")
-    class_prior_prob_list, likelihood_for_features_dict = start_classification(classification, train_df, number_classes)
+    class_prior_prob_list, likelihood_for_features_dict, all_words_and_counts_dict = start_classification(classification, train_df, number_classes, features)
 
     # evaluate dev file
-    dev_pred_sentiment_value_dict = evaluate_file(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, features)
+    dev_pred_sentiment_value_dict = evaluate_file(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, features, all_words_and_counts_dict)
     f1_score_comp = f1_score_computation(dev_pred_sentiment_value_dict, dev_df, number_classes, confusion_matrix) # compare pred dev vs actual dev
     dev_macro_f1_score = f1_score_comp.compute_macro_f1_score()
 
     # evaluate test file
-    test_pred_sentiment_value_dict = evaluate_file(classification, test_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, features)
+    test_pred_sentiment_value_dict = evaluate_file(classification, test_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, features, all_words_and_counts_dict)
 
     # write to output files
     produce_output_file('dev', number_classes, USER_ID, dev_pred_sentiment_value_dict)
