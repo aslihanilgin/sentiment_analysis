@@ -1,5 +1,6 @@
 import numpy as np
 import re
+import nltk.sentiment.vader as vd
 
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
@@ -36,19 +37,21 @@ class classifier:
 
             # remove stop words
             # Reference: https://stackoverflow.com/questions/5486337/how-to-remove-stop-words-using-nltk-or-python
-            sentence_tokens = [word for word in sentence_tokens if word not in stopwords.words('english')]
+            sentence_tokens = [word for word in sentence_tokens if (word not in stopwords.words('english')) or (word not in vd.VaderConstants.NEGATE) or (word not in vd.VaderConstants.BOOSTER_DICT)]
 
             if self.features == 'features':
                 sentence_tokens = self.feature_ops.tag(sentence_tokens)
 
             # stemming
             ps = PorterStemmer()
-            stemmed_sentence_tokens = [ps.stem(t) for t in sentence_tokens]
+            stemmed_sentence_tokens = [ps.stem(t) for t in sentence_tokens if (t not in vd.VaderConstants.NEGATE) or (t not in vd.VaderConstants.BOOSTER_DICT)]
             rep_sentence = ' '.join(stemmed_sentence_tokens)
 
             df['Phrase'] = df['Phrase'].replace([sentence], rep_sentence)
         
         print("Preprocessed sentences.")
+        # debug
+        print(df)
 
         return df
     
@@ -122,19 +125,6 @@ class classifier:
             count = token_dict_vals[class_no]
             class_likelihood = count / sent_count_list[class_no]
             likelihood_list.append(class_likelihood)
-
-        if self.features == 'features':
-            neg_add_val = self.feature_ops.negation(token)
-            intense_add_val = self.feature_ops.intensifier(token)
-
-            likelihood_list[0] += neg_add_val
-
-            if number_classes == 5:
-                likelihood_list[1] += neg_add_val
-                likelihood_list[3] += intense_add_val
-                likelihood_list[4] += intense_add_val
-            if number_classes == 3:
-                likelihood_list[2] += intense_add_val
 
         return likelihood_list
 
