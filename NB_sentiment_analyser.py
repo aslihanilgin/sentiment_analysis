@@ -5,6 +5,7 @@ NB sentiment analyser.
 Start code.
 """
 import argparse
+import csv 
 import pandas as pd
 from classifier import classifier
 from f1_score_computation import f1_score_computation
@@ -73,18 +74,18 @@ def start_classification(classification, train_df, number_classes):
     # training done
     
     
-def evaluate_file(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, feature_opt):
+def evaluate_file(classification, eval_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, feature_opt):
 
     print("Evaluating file.")
 
     # preprocess dataframe
-    dev_df = classification.pre_process_sentences(dev_df)
+    eval_df = classification.pre_process_sentences(eval_df)
 
     pred_sentiment_value_dict = dict()
 
     # Calculate posterior probability for every sentence in dev file
     loop_count = 0 
-    for sentence in dev_df["Phrase"]:
+    for sentence in eval_df["Phrase"]:
         # Reference: https://stackabuse.com/python-for-nlp-creating-bag-of-words-model-from-scratch/
         # tokenize sentences
         sentence_tokens = word_tokenize(sentence)
@@ -113,15 +114,26 @@ def evaluate_file(classification, dev_df, class_prior_prob_list, likelihood_for_
         highest_prob_index = classification.compute_posterior_probability(sentence_tokens, sentence_lh_dict, class_prior_prob_list, number_classes)
 
         # add the sentence id and the calculated sent value to sentiment_value_dict
-        sentence_id = dev_df.iloc[[loop_count]]['SentenceId'].item()
+        sentence_id = eval_df.iloc[[loop_count]]['SentenceId'].item()
         
         pred_sentiment_value_dict[sentence_id] = highest_prob_index
 
         loop_count += 1
+    
+    print("Evaluation finished.")
 
     return pred_sentiment_value_dict
 
-    print("Evaluation finished.")
+def produce_output_file(type, number_classes, user_id, pred_file):
+    dir_path = "predictions/"
+    file_name = dir_path + type + "_predictions_" + str(number_classes) + "classes_" + user_id + ".tsv"
+
+    columns = ['SentenceID', 'Sentiment']
+
+    pred_file_df = pd.DataFrame(list(pred_file.items()))
+    pred_file_df.columns = columns
+    
+    pred_file_df.to_csv(file_name, sep="\t")
 
 def main():
     
@@ -164,19 +176,23 @@ def main():
     class_prior_prob_list, likelihood_for_features_dict = start_classification(classification, train_df, number_classes)
 
     # evaluate dev file
-    pred_sentiment_value_dict = evaluate_file(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, features)
-    f1_score_comp = f1_score_computation(pred_sentiment_value_dict, dev_df, number_classes, confusion_matrix) # compare pred dev vs actual dev
+    dev_pred_sentiment_value_dict = evaluate_file(classification, dev_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, features)
+    f1_score_comp = f1_score_computation(dev_pred_sentiment_value_dict, dev_df, number_classes, confusion_matrix) # compare pred dev vs actual dev
     dev_macro_f1_score = f1_score_comp.compute_macro_f1_score()
-    print("Dev macro f1 score: {}".format(dev_macro_f1_score))
 
     # evaluate test file
-    pred_sentiment_value_dict = evaluate_file(classification, test_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, features)
+    test_pred_sentiment_value_dict = evaluate_file(classification, test_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, features)
+
+    # write to output files
+    produce_output_file('dev', number_classes, USER_ID, dev_pred_sentiment_value_dict)
+    produce_output_file('test', number_classes, USER_ID, test_pred_sentiment_value_dict)
+
 
     """
     IMPORTANT: your code should return the lines below. 
     However, make sure you are also implementing a function to save the class predictions on dev and test sets as specified in the assignment handout
     """
-    # print("Student\tNumber of classes\tFeatures\tmacro-F1(dev)\tAccuracy(dev)")
+    print("Student\tNumber of classes\tFeatures\tmacro-F1(dev)\tAccuracy(dev)")
     print("%s\t%d\t%s\t%f" % (USER_ID, number_classes, features, dev_macro_f1_score))
 
 if __name__ == "__main__":
