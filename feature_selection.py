@@ -18,26 +18,22 @@ class feature_selection:
         return new_sentence
 
     # Reference: https://www.nltk.org/_modules/nltk/sentiment/vader.html
-    def negation(self, token):
-
-        if token in vd.VaderConstants.NEGATE:
-            return vd.VaderConstants.N_SCALAR
-            # return 1
-        else:
-            return 0
+    def negation(self, sentence):
+        
+        for token in sentence:
+            if token in vd.VaderConstants.NEGATE:
+                return vd.VaderConstants.N_SCALAR
+            else:
+                return 0
 
     # Reference: https://www.nltk.org/_modules/nltk/sentiment/vader.html
-    def intensifier(self, token):
-
-        if token in vd.VaderConstants.BOOSTER_DICT:
-            # get increment/decrement value
-            # TODO: should I add this value in neg post prob or post prob???
-            # total_inc_dec_val += vd.VaderConstants.BOOSTER_DICT[token]
-            return vd.VaderConstants.BOOSTER_DICT[token]
-            # return 1
-
-        else:
-            return 0
+    def intensifier(self, sentence):
+        for token in sentence:
+            if token in vd.VaderConstants.BOOSTER_DICT:
+                # get increment/decrement value
+                return vd.VaderConstants.BOOSTER_DICT[token]
+            else:
+                return 0
         
     def tfidf(self, all_words_and_counts_dict):
 

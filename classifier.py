@@ -139,7 +139,7 @@ class classifier:
         return likelihood_list
 
 
-    def compute_posterior_probability(self, sentence_lh_dict, class_prior_prob_list, number_classes):
+    def compute_posterior_probability(self, sentence, sentence_lh_dict, class_prior_prob_list, number_classes):
 
         all_post_probs = list()
 
@@ -149,7 +149,27 @@ class classifier:
 
             all_post_probs.append(class_lh_product * class_prior_prob)
 
+        if self.features == 'features':
+            neg_add_val = self.feature_ops.negation(sentence)
+            intense_add_val = self.feature_ops.intensifier(sentence)
+
+            if neg_add_val != None:
+                all_post_probs[0] += neg_add_val
+
+            if number_classes == 5:
+                if neg_add_val != None:
+                    all_post_probs[1] += neg_add_val
+                if intense_add_val != None:
+                    all_post_probs[3] += intense_add_val
+                    all_post_probs[4] += intense_add_val
+            if number_classes == 3:
+                if intense_add_val != None:
+                    all_post_probs[2] += intense_add_val
+
         highest_prob_index = np.argmax(all_post_probs) # returns index of highest probability score
 
         return highest_prob_index
+
+
+        
         

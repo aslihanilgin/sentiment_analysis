@@ -69,8 +69,6 @@ def start_classification(classification, train_df, number_classes, feature_opt):
         tfidf_selected_tokens = feature_ops.tfidf(all_words_and_counts_dict)
         words_to_compute_lh = tfidf_selected_tokens
 
-    print("selected features df: {}".format(train_df))
-
     print("Computing likelihoods for features.")
     for token in words_to_compute_lh:
         likelihood_list = classification.compute_likelihood_for_feature(token, sent_count_list, all_words_and_counts_dict, number_classes)
@@ -105,7 +103,7 @@ def evaluate_file(classification, eval_df, class_prior_prob_list, likelihood_for
                 continue
 
         # get sentiment having maximum posterior probability
-        highest_prob_index = classification.compute_posterior_probability(sentence_lh_dict, class_prior_prob_list, number_classes)
+        highest_prob_index = classification.compute_posterior_probability(sentence, sentence_lh_dict, class_prior_prob_list, number_classes)
 
         # add the sentence id and the calculated sent value to sentiment_value_dict
         sentence_id = eval_df.iloc[[loop_count]]['SentenceId'].item()
