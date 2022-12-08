@@ -175,9 +175,10 @@ def main():
     # evaluate test file
     test_pred_sentiment_value_dict = evaluate_file(classification, test_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, features, all_words_and_counts_dict)
 
-    # write to output files
-    produce_output_file('dev', number_classes, USER_ID, dev_pred_sentiment_value_dict)
-    produce_output_file('test', number_classes, USER_ID, test_pred_sentiment_value_dict)
+    if output_files:
+        # write to output files
+        produce_output_file('dev', number_classes, USER_ID, dev_pred_sentiment_value_dict)
+        produce_output_file('test', number_classes, USER_ID, test_pred_sentiment_value_dict)
 
 
     """
