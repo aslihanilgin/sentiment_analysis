@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument("dev")
     parser.add_argument("test")
     parser.add_argument("-classes", type=int)
-    parser.add_argument('-features', type=str, default="all_words", choices=["all_words", "features", "features_tfidf"])
+    parser.add_argument('-features', type=str, default="all_words", choices=["all_words", "features_word_type", "features_tfidf"])
     parser.add_argument('-output_files', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('-confusion_matrix', action=argparse.BooleanOptionalAction, default=False)
     args=parser.parse_args()

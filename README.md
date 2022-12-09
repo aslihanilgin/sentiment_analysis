@@ -27,8 +27,8 @@ You can run this program with the reuqired arguments as follows:
 `python NB_sentiment_analyser.py <path to train file> <path to dev file> <path to test file>`
 
 The optional arguments are:
-* `-classes`: number of classes -> default **5** classes
-* `-features`: features -> default is considering **all words**
+* `-classes`: number of classes -> default **5** classes (options: 3,5)
+* `-features`: features -> default is considering **all words** (options: all_words, features_word_type, features_tfidf)
 * `-output_files`: option to display output files -> default is producing no output files
 * `-confusion_matrix`: option to display the confusion matrix -> default is showing no confusion matrix
 

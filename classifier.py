@@ -43,7 +43,7 @@ class classifier:
             # Reference: https://stackoverflow.com/questions/5486337/how-to-remove-stop-words-using-nltk-or-python
             sentence_tokens = [word for word in sentence_tokens if (word not in stopwords.words('english')) or (word in vd.VaderConstants.NEGATE) or (word in vd.VaderConstants.BOOSTER_DICT)]
 
-            if self.features == 'features':
+            if self.features == 'features_word_type':
                 sentence_tokens = self.feature_ops.tag(sentence_tokens)
 
             # stemming
@@ -141,7 +141,7 @@ class classifier:
 
             all_post_probs.append(class_lh_product * class_prior_prob)
 
-        if self.features == 'features':
+        if self.features == 'features_word_type' or self.features == 'features_tfidf':
             neg_add_val = self.feature_ops.negation(sentence)
             intense_add_val = self.feature_ops.intensifier(sentence)
 
