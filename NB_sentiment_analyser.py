@@ -13,8 +13,15 @@ from feature_selection import feature_selection
 
 from nltk.tokenize import word_tokenize
 
-"""
-IMPORTANT, modify this part with your details
+"""Classifying sentiment value of movie review data.
+
+Usage:
+    `python NB_sentiment_analyser.py <path to train file> <path to dev file> <path to test file>`
+
+    For more information, refer to README.md
+
+Author:
+    Aslihan Ilgin Okan - December 2022
 """
 USER_ID = "aca19aio"
 
@@ -39,13 +46,21 @@ def map_5_val_to_3_val_scale(df):
 
     return df
 
+"""
+Kickstart method for classification:
+Pre-processes data, computes sentiment counts, computes 
+prior probabilities, creates bag of words, computes
+likelihoods
 
+Returns: prior probability dict for each class, class likelihoods 
+values dict for each unique term, frequency dict of each unique term
+""" 
 def start_classification(classification, train_df, number_classes, feature_opt):
 
     # preprocess dataframe
     train_df = classification.pre_process_sentences(train_df)
 
-    # Computing Prior Probabilities
+    # ----Computing Prior Probabilities
     
     # compute count for every sentiment class
     sent_count_list = classification.compute_total_sent_counts(train_df, number_classes)
@@ -55,7 +70,7 @@ def start_classification(classification, train_df, number_classes, feature_opt):
     # compute prior probabilities according to class number
     class_prior_prob_list = classification.compute_prior_probability(total_sentence_no, sent_count_list, number_classes)
 
-    # Computing Likelihoods 
+    # -----Computing Likelihoods 
 
     likelihood_for_features_dict = dict()
     # create a bag of words with their counts
@@ -70,13 +85,20 @@ def start_classification(classification, train_df, number_classes, feature_opt):
         words_to_compute_lh = tfidf_selected_tokens
 
     print("Computing likelihoods for features.")
+    # compute likelihoods
     for token in words_to_compute_lh:
         likelihood_list = classification.compute_likelihood_for_feature(token, sent_count_list, all_words_and_counts_dict, number_classes)
         likelihood_for_features_dict[token] = likelihood_list
     
     return class_prior_prob_list, likelihood_for_features_dict, all_words_and_counts_dict
-    
-    
+
+"""
+Evaluates given file:
+Pre-processes to be evaluated data, calculates posterior 
+probabilities, predicts sentiment values
+
+Returns: sentence id with its predicted sentiment value dictionary
+"""   
 def evaluate_file(classification, eval_df, class_prior_prob_list, likelihood_for_features_dict, number_classes, feature_opt, all_words_and_counts_dict):
 
     print("Evaluating file.")
@@ -116,6 +138,7 @@ def evaluate_file(classification, eval_df, class_prior_prob_list, likelihood_for
 
     return pred_sentiment_value_dict
 
+# Produces output file 
 def produce_output_file(type, number_classes, user_id, pred_file):
     dir_path = "predictions/"
     file_name = dir_path + type + "_predictions_" + str(number_classes) + "classes_" + user_id + ".tsv"
@@ -181,10 +204,6 @@ def main():
         produce_output_file('test', number_classes, USER_ID, test_pred_sentiment_value_dict)
 
 
-    """
-    IMPORTANT: your code should return the lines below. 
-    However, make sure you are also implementing a function to save the class predictions on dev and test sets as specified in the assignment handout
-    """
     print("Student\tNumber of classes\tFeatures\tmacro-F1(dev)\tAccuracy(dev)")
     print("%s\t%d\t%s\t%f" % (USER_ID, number_classes, features, dev_macro_f1_score))
 

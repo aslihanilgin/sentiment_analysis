@@ -12,13 +12,19 @@ class f1_score_computation:
         sentiment_and_id_df = df.loc[:, ["SentenceId", "Sentiment"]]
         self.real_sentiment_values_dict = dict(sentiment_and_id_df.values.tolist())
 
+    """
+    Computes f1 scores for each sentiment class
+
+    Returns: list of all f1 scores
+    """
     def compute_f1_scores(self):
 
-        f1_scores = list()
+        f1_scores = list() 
 
         for class_id in range(self.number_classes):
             tp_count, fp_count, fn_count, tn_count = self.compute_counts(class_id)
 
+            # produce confusion matrix
             if self.confusion_matrix:
                 self.visualise_confusion_matrix(tp_count, fp_count, fn_count, tn_count)
 
@@ -35,6 +41,9 @@ class f1_score_computation:
 
         return f1_scores
 
+    """
+    Returns: macro f1 score
+    """
     def compute_macro_f1_score(self):
 
         f1_scores_of_classes = self.compute_f1_scores()
@@ -42,6 +51,11 @@ class f1_score_computation:
         macro_f1 = sum(f1_scores_of_classes) / self.number_classes
         return macro_f1
 
+    """
+    Computes confusion matrix element counts for a class
+
+    Returns: counts
+    """
     def compute_counts(self, class_id):
 
         tp_count = 0
@@ -86,6 +100,7 @@ class f1_score_computation:
         else:
             return tp_count / (tp_count + fp_count)
 
+    # visualising confusion matrix
     def visualise_confusion_matrix(self, tp_count, fp_count, fn_count, tn_count):
         # Reference: https://medium.com/@dtuk81/confusion-matrix-visualization-fc31e3f30fea
         cf_matrix = [[tp_count, fp_count], [fn_count, tn_count]]

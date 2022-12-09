@@ -14,9 +14,16 @@ class classifier:
         self.features = features
         self.feature_ops = feature_selection()
 
-    # Preprocesses sentences within the df by:
-    # - lowercasing
-    # - removing stop words
+    """
+    Preprocesses sentences within the df by:
+    - lowercasing
+    - removing punctuation
+    - replacing some words
+    - removing stop words
+    - stemming
+
+    Returns: dataframe
+    """
     def pre_process_sentences(self, df):
 
         for sentence in df["Phrase"]:
@@ -57,9 +64,13 @@ class classifier:
 
         return df
     
-    def create_bag_of_words(self, df, number_classes):
+    """
+    Create a  bag of words model
 
-        # TODO: CAN DO THIS IN THE PREPROCESSING STEP TO AVOID ANOTHER L=OOP THROUGH DATAFRAME
+    Returns: dictionary of each unique word and the count for that 
+    word in each sentiment class.
+    """
+    def create_bag_of_words(self, df, number_classes):
 
         print("Creating bag of words.")
 
@@ -104,6 +115,9 @@ class classifier:
 
         return count_list
 
+    """
+    Returns: prior probability list for each class
+    """
     def compute_prior_probability(self, total_sentence_no, count_list, number_classes):
 
         class_prior_probs = list()
@@ -113,8 +127,11 @@ class classifier:
             class_prior_probs.append(prior_prob)
 
         return class_prior_probs
+    """
+    Compute likelihood for 5 sentiment values for a token
 
-    # Compute likelihood for 5 sentiment values for a token
+    Returns: likelihood list of the word for each class
+    """
     def compute_likelihood_for_feature(self, token, sent_count_list, all_words_and_counts_dict, number_classes):
         
         # list --> [neg, sw_neg, neu, sw_pos, pos] if 5 class
@@ -130,7 +147,9 @@ class classifier:
 
         return likelihood_list
 
-
+    """
+    Returns: index of sentiment class with the highest value
+    """
     def compute_posterior_probability(self, sentence, sentence_lh_dict, class_prior_prob_list, number_classes):
 
         all_post_probs = list()
