@@ -23,7 +23,7 @@ def parse_args():
     parser.add_argument("training")
     parser.add_argument("dev")
     parser.add_argument("test")
-    parser.add_argument("-classes", type=int, default=5)
+    parser.add_argument("-classes", type=int)
     parser.add_argument('-features', type=str, default="all_words", choices=["all_words", "features", "features_tfidf"])
     parser.add_argument('-output_files', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('-confusion_matrix', action=argparse.BooleanOptionalAction, default=False)
@@ -136,11 +136,8 @@ def main():
     dev = inputs.dev
     test = inputs.test
     
-    #number of classes (default = 5)
+    #number of classes
     number_classes = inputs.classes
-    if number_classes != 3 or number_classes != 5:
-        print("Number of classes provided is not applicable. Defaulting to 5.")
-        number_classes = 5
     
     #accepted values "features" to use your features or "all_words" to use all words (default = all_words)
     features = inputs.features

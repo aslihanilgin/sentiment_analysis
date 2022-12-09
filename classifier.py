@@ -28,23 +28,27 @@ class classifier:
             rm_punc_sentence = re.sub(r'[^\w\s]','',lower_sentence)
             # remove numbers
             rm_num_sentence = re.sub(r'[0-9]', '', rm_punc_sentence)
-            # replace nt with not
+            # replace some remainders of words with the full word
             repl_sentence = rm_num_sentence.replace("nt", "not")
+            repl_sentence = rm_num_sentence.replace("s", "is")
+            repl_sentence = rm_num_sentence.replace("re", "are")
+            repl_sentence = rm_num_sentence.replace("ve", "have")
+            repl_sentence = rm_num_sentence.replace("wo", "will")
+            repl_sentence = rm_num_sentence.replace("ca", "can")
 
-            # Reference: https://stackabuse.com/python-for-nlp-creating-bag-of-words-model-from-scratch/
             # tokenize sentences
             sentence_tokens = word_tokenize(repl_sentence)
 
             # remove stop words
             # Reference: https://stackoverflow.com/questions/5486337/how-to-remove-stop-words-using-nltk-or-python
-            sentence_tokens = [word for word in sentence_tokens if (word not in stopwords.words('english')) or (word not in vd.VaderConstants.NEGATE) or (word not in vd.VaderConstants.BOOSTER_DICT)]
+            sentence_tokens = [word for word in sentence_tokens if (word not in stopwords.words('english')) or (word in vd.VaderConstants.NEGATE) or (word in vd.VaderConstants.BOOSTER_DICT)]
 
             if self.features == 'features':
                 sentence_tokens = self.feature_ops.tag(sentence_tokens)
 
             # stemming
             ps = PorterStemmer()
-            stemmed_sentence_tokens = [ps.stem(t) for t in sentence_tokens if (t not in vd.VaderConstants.NEGATE) or (t not in vd.VaderConstants.BOOSTER_DICT)]
+            stemmed_sentence_tokens = [ps.stem(word) for word in sentence_tokens if (word not in vd.VaderConstants.NEGATE) or (word not in vd.VaderConstants.BOOSTER_DICT)]
             rep_sentence = ' '.join(stemmed_sentence_tokens)
 
             df['Phrase'] = df['Phrase'].replace([sentence], rep_sentence)
